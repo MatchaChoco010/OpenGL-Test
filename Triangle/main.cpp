@@ -7,8 +7,7 @@
 #include <GLFW/glfw3.h>
 #include <glm.hpp>
 
-int main()
-{
+int main() {
 	// GLFWの初期化
 	if (!glfwInit())
 		return 1;
@@ -23,9 +22,9 @@ int main()
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 	// ウィンドウの作成
-	GLFWwindow*const window = glfwCreateWindow(640, 480, "Triangle", nullptr, nullptr);
-	if (window == nullptr)
-	{
+	GLFWwindow* const window =
+		glfwCreateWindow(640, 480, "Triangle", nullptr, nullptr);
+	if (window == nullptr) {
 		std::cerr << "Can't create GLFW window." << std::endl;
 		return 1;
 	}
@@ -33,8 +32,7 @@ int main()
 	glfwMakeContextCurrent(window);
 
 	// GLEWの初期化
-	if (glewInit() != GLEW_OK)
-	{
+	if (glewInit() != GLEW_OK) {
 		std::cerr << "Can't initialize GLEW." << std::endl;
 		return 1;
 	}
@@ -76,14 +74,16 @@ int main()
 	glShaderSource(vertexShaderObj, 1, &vertexShaderSource, nullptr);
 	glCompileShader(vertexShaderObj);
 	glAttachShader(program, vertexShaderObj);
-	
+
 	// 頂点シェーダのチェック
 	glGetShaderiv(vertexShaderObj, GL_COMPILE_STATUS, &status);
-	if (status == GL_FALSE) std::cerr << "Compile Error in Vertex Shader." << std::endl;
+	if (status == GL_FALSE)
+		std::cerr << "Compile Error in Vertex Shader." << std::endl;
 	glGetShaderiv(vertexShaderObj, GL_INFO_LOG_LENGTH, &infoLogLength);
 	if (infoLogLength > 1) {
 		std::vector<GLchar> vertexShaderErrorMessage(infoLogLength);
-		glGetShaderInfoLog(vertexShaderObj, infoLogLength, nullptr, vertexShaderErrorMessage.data());
+		glGetShaderInfoLog(vertexShaderObj, infoLogLength, nullptr,
+			vertexShaderErrorMessage.data());
 		std::cerr << vertexShaderErrorMessage.data() << std::endl;
 	}
 
@@ -94,17 +94,19 @@ int main()
 	glShaderSource(fragmentShaderObj, 1, &fragmentShaderSource, nullptr);
 	glCompileShader(fragmentShaderObj);
 	glAttachShader(program, fragmentShaderObj);
-	
+
 	// 頂点シェーダのチェック
 	glGetShaderiv(fragmentShaderObj, GL_COMPILE_STATUS, &status);
-	if (status == GL_FALSE) std::cerr << "Compile Error in Vertex Shader." << std::endl;
+	if (status == GL_FALSE)
+		std::cerr << "Compile Error in Vertex Shader." << std::endl;
 	glGetShaderiv(fragmentShaderObj, GL_INFO_LOG_LENGTH, &infoLogLength);
 	if (infoLogLength > 1) {
 		std::vector<GLchar> fragmentShaderErrorMessage(infoLogLength);
-		glGetShaderInfoLog(fragmentShaderObj, infoLogLength, nullptr, fragmentShaderErrorMessage.data());
+		glGetShaderInfoLog(fragmentShaderObj, infoLogLength, nullptr,
+			fragmentShaderErrorMessage.data());
 		std::cerr << fragmentShaderErrorMessage.data() << std::endl;
 	}
-	
+
 	glDeleteShader(fragmentShaderObj);
 
 	// プログラムのリンク
@@ -112,12 +114,13 @@ int main()
 
 	// リンクのチェック
 	glGetProgramiv(program, GL_LINK_STATUS, &status);
-	if (status == GL_FALSE) std::cerr << "Link Error." << std::endl;
+	if (status == GL_FALSE)
+		std::cerr << "Link Error." << std::endl;
 	glGetProgramiv(program, GL_INFO_LOG_LENGTH, &infoLogLength);
-	if (infoLogLength > 1)
-	{
+	if (infoLogLength > 1) {
 		std::vector<GLchar> programLinkErrorMessage(infoLogLength);
-		glGetProgramInfoLog(program, infoLogLength, nullptr, programLinkErrorMessage.data());
+		glGetProgramInfoLog(program, infoLogLength, nullptr,
+			programLinkErrorMessage.data());
 		std::cerr << programLinkErrorMessage.data() << std::endl;
 	}
 
@@ -128,9 +131,9 @@ int main()
 
 	// 三角形の頂点座標と色情報の配列
 	const Vertex triangleVertices[] = {
-		{ 0.0f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f },
-		{ -0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f },
-		{ 0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f },
+		{0.0f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f},
+		{-0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f},
+		{0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f},
 	};
 
 	// VAOの作成とバインド
@@ -142,21 +145,23 @@ int main()
 	GLuint vbo;
 	glGenBuffers(1, &vbo);
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	glBufferData(GL_ARRAY_BUFFER, 4 * sizeof(Vertex), triangleVertices, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, 4 * sizeof(Vertex), triangleVertices,
+		GL_STATIC_DRAW);
 	glEnableVertexAttribArray(0);
 	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), static_cast<Vertex*>(0)->position);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), static_cast<Vertex*>(0)->color);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex),
+		static_cast<Vertex*>(0)->position);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex),
+		static_cast<Vertex*>(0)->color);
 
-	while (glfwWindowShouldClose(window) == GL_FALSE)
-	{
+	while (glfwWindowShouldClose(window) == GL_FALSE) {
 		glClear(GL_COLOR_BUFFER_BIT);
 
 		glUseProgram(program);
 
 		glBindVertexArray(vao);
 		glDrawArrays(GL_TRIANGLES, 0, 3);
-		
+
 		glfwSwapBuffers(window);
 
 		glfwPollEvents();
