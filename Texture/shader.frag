@@ -21,7 +21,10 @@ const float Kshi = 30.0;
 
 void main ()
 {
-  vec3 Kdiff = texture(colorSampler, vec2(vUV.x, 1 - vUV.y)).rgb;
+  vec4 baseColor = texture(colorSampler, vUV);
+  if (baseColor.a < 0.5) discard;
+
+  vec3 Kdiff = baseColor.rgb;
   vec3 Kamb = Kdiff;
 
   vec3 N = normalize(viewNormal);
