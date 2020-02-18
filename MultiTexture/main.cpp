@@ -219,6 +219,7 @@ GLuint loadTexture(const char* path)
 }
 
 int main() {
+	glfwSetErrorCallback([](auto id, auto description) { std::cerr << description << std::endl; });
 	// GLFWの初期化
 	if (!glfwInit())
 		return 1;
@@ -234,7 +235,7 @@ int main() {
 
 	// ウィンドウの作成
 	GLFWwindow* const window =
-		glfwCreateWindow(640, 480, "Triangle", nullptr, nullptr);
+		glfwCreateWindow(640, 480, "MultiTexture", nullptr, nullptr);
 	if (window == nullptr) {
 		std::cerr << "Can't create GLFW window." << std::endl;
 		return 1;
