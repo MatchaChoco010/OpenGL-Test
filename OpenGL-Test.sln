@@ -9,6 +9,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Obj", "Obj\Obj.vcxproj", "{
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Texture", "Texture\Texture.vcxproj", "{DC93EDDD-2E91-4D58-B72A-B20EED3AE9CD}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MultiTexture", "MultiTexture\MultiTexture.vcxproj", "{F4F1E250-D5D5-4BB2-8B88-7F74B7AF7E2A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -41,6 +43,14 @@ Global
 		{DC93EDDD-2E91-4D58-B72A-B20EED3AE9CD}.Release|x64.Build.0 = Release|x64
 		{DC93EDDD-2E91-4D58-B72A-B20EED3AE9CD}.Release|x86.ActiveCfg = Release|Win32
 		{DC93EDDD-2E91-4D58-B72A-B20EED3AE9CD}.Release|x86.Build.0 = Release|Win32
+		{F4F1E250-D5D5-4BB2-8B88-7F74B7AF7E2A}.Debug|x64.ActiveCfg = Debug|x64
+		{F4F1E250-D5D5-4BB2-8B88-7F74B7AF7E2A}.Debug|x64.Build.0 = Debug|x64
+		{F4F1E250-D5D5-4BB2-8B88-7F74B7AF7E2A}.Debug|x86.ActiveCfg = Debug|Win32
+		{F4F1E250-D5D5-4BB2-8B88-7F74B7AF7E2A}.Debug|x86.Build.0 = Debug|Win32
+		{F4F1E250-D5D5-4BB2-8B88-7F74B7AF7E2A}.Release|x64.ActiveCfg = Release|x64
+		{F4F1E250-D5D5-4BB2-8B88-7F74B7AF7E2A}.Release|x64.Build.0 = Release|x64
+		{F4F1E250-D5D5-4BB2-8B88-7F74B7AF7E2A}.Release|x86.ActiveCfg = Release|Win32
+		{F4F1E250-D5D5-4BB2-8B88-7F74B7AF7E2A}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
