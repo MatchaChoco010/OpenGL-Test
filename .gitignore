@@ -36,3 +36,7 @@ x64/
 
 !vendors/**/*.lib
 !vendors/**/*/x64/
+!Obj/test.obj
+!Obj/testMonkey.obj
+!Texture/testMonkey.obj
+!MultiTexture/testMonkey.obj
