@@ -27,8 +27,8 @@ const vec3[PointLightMax] pointLightPositions = vec3[](
   vec3(2.0, 0.0, 2.0)
 );
 const float[PointLightMax] pointLightLuminousFlux = float[](
-  10,
-  5
+  300,
+  200
 );
 const vec3[PointLightMax] pointLightColor = vec3[](
   vec3(1.0, 1.0, 0.8),
@@ -204,7 +204,7 @@ void main ()
     {
       vec3 L = normalize(pointLightPositions[i] - vWorldPos.xyz);
       vec3 H = normalize(L + V);
-      float attenuation = 1 / pow(length(pointLightPositions[i] - vWorldPos.xyz), 2);
+      float attenuation = 1 / (4 * PI * pow(length(pointLightPositions[i] - vWorldPos.xyz), 2));
       vec3 irradiance = pointLightLuminousFlux[i] * attenuation * pointLightColor[i] * dot(N, L);
 
       reflectedLight += DisneyBRDF(L, V, N, H, tangent, binormal, baseColor.rgb, subsurface, metallic, specular, specularTint, roughness, anisotropic, sheen, sheenTint, clearcoat, clearcoatGloss) * irradiance;
