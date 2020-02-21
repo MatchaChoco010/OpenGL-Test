@@ -274,7 +274,7 @@ int main() {
 
 	// ウィンドウの作成
 	GLFWwindow* const window =
-		glfwCreateWindow(640, 480, "MultiTexture", nullptr, nullptr);
+		glfwCreateWindow(640, 480, "PBR Test", nullptr, nullptr);
 	if (window == nullptr) {
 		std::cerr << "Can't create GLFW window." << std::endl;
 		return 1;

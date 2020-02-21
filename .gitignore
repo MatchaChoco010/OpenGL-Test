@@ -40,3 +40,4 @@ x64/
 !Obj/testMonkey.obj
 !Texture/testMonkey.obj
 !MultiTexture/testMonkey.obj
+!PBR-Forward/testMonkey.obj
