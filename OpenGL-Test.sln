@@ -13,6 +13,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MultiTexture", "MultiTextur
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PBR-Forward", "PBR-Forward\PBR-Forward.vcxproj", "{192DB4F5-DB96-4FB5-AD21-E3BE4B4E3B72}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PBR-Deferred", "PBR-Deferred\PBR-Deferred.vcxproj", "{C9CA5149-C1B0-4679-971E-5EB83C7F6502}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -61,6 +63,14 @@ Global
 		{192DB4F5-DB96-4FB5-AD21-E3BE4B4E3B72}.Release|x64.Build.0 = Release|x64
 		{192DB4F5-DB96-4FB5-AD21-E3BE4B4E3B72}.Release|x86.ActiveCfg = Release|Win32
 		{192DB4F5-DB96-4FB5-AD21-E3BE4B4E3B72}.Release|x86.Build.0 = Release|Win32
+		{C9CA5149-C1B0-4679-971E-5EB83C7F6502}.Debug|x64.ActiveCfg = Debug|x64
+		{C9CA5149-C1B0-4679-971E-5EB83C7F6502}.Debug|x64.Build.0 = Debug|x64
+		{C9CA5149-C1B0-4679-971E-5EB83C7F6502}.Debug|x86.ActiveCfg = Debug|Win32
+		{C9CA5149-C1B0-4679-971E-5EB83C7F6502}.Debug|x86.Build.0 = Debug|Win32
+		{C9CA5149-C1B0-4679-971E-5EB83C7F6502}.Release|x64.ActiveCfg = Release|x64
+		{C9CA5149-C1B0-4679-971E-5EB83C7F6502}.Release|x64.Build.0 = Release|x64
+		{C9CA5149-C1B0-4679-971E-5EB83C7F6502}.Release|x86.ActiveCfg = Release|Win32
+		{C9CA5149-C1B0-4679-971E-5EB83C7F6502}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
