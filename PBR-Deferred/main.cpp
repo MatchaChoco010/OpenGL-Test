@@ -475,6 +475,24 @@ int main() {
 	const GLuint pointLightPassProjectionParamsLoc = glGetUniformLocation(pointLightPassShaderProgram, "ProjectionParams");
 	const GLuint pointLightPassResolutionLoc = glGetUniformLocation(pointLightPassShaderProgram, "resolution");
 
+	const GLuint spotLightPassShaderProgram = createProgram("SpotLightPass.vert", "SpotLightPass.frag");
+	const GLuint spotLightPassModelViewProjectionLoc = glGetUniformLocation(spotLightPassShaderProgram, "ModelViewProjection");
+	const GLuint spotLightPassGBuffer0Loc = glGetUniformLocation(spotLightPassShaderProgram, "GBuffer0");
+	const GLuint spotLightPassGBuffer1Loc = glGetUniformLocation(spotLightPassShaderProgram, "GBuffer1");
+	const GLuint spotLightPassGBuffer2Loc = glGetUniformLocation(spotLightPassShaderProgram, "GBuffer2");
+	const GLuint spotLightPassGBuffer3Loc = glGetUniformLocation(spotLightPassShaderProgram, "GBuffer3");
+	const GLuint spotLightPassWorldLightPosition = glGetUniformLocation(spotLightPassShaderProgram, "worldLightPosition");
+	const GLuint spotLightPassLightIntensityLoc = glGetUniformLocation(spotLightPassShaderProgram, "LightIntensity");
+	const GLuint spotLightPassLightColorLoc = glGetUniformLocation(spotLightPassShaderProgram, "LightColor");
+	const GLuint spotLightPassLightRangeLoc = glGetUniformLocation(spotLightPassShaderProgram, "LightRange");
+	const GLuint spotLightPassLightDirectionLoc = glGetUniformLocation(spotLightPassShaderProgram, "LightDirection");
+	const GLuint spotLightPassLightAngleLoc = glGetUniformLocation(spotLightPassShaderProgram, "LightAngle");
+	const GLuint spotLightPassLightBlendLoc = glGetUniformLocation(spotLightPassShaderProgram, "LightBlend");
+	const GLuint spotLightPassWorldCameraPosLoc = glGetUniformLocation(spotLightPassShaderProgram, "worldCameraPos");
+	const GLuint spotLightPassViewProjectionILoc = glGetUniformLocation(spotLightPassShaderProgram, "ViewProjectionI");
+	const GLuint spotLightPassProjectionParamsLoc = glGetUniformLocation(spotLightPassShaderProgram, "ProjectionParams");
+	const GLuint spotLightPassResolutionLoc = glGetUniformLocation(spotLightPassShaderProgram, "resolution");
+
 	const GLuint postprocessShaderProgram = createProgram("Postprocess.vert", "Postprocess.frag");
 	const GLuint postprocessInputTextureLoc = glGetUniformLocation(postprocessShaderProgram, "inputTexture");
 	const GLuint postprocessApertureLoc = glGetUniformLocation(postprocessShaderProgram, "aperture");
@@ -780,8 +798,89 @@ int main() {
 
 			glCullFace(GL_BACK);
 		}
-		
 
+
+		// Spot Light Pass
+		glUseProgram(spotLightPassShaderProgram);
+
+		glUniform3fv(spotLightPassWorldCameraPosLoc, 1, &cameraPos[0]);
+		glUniformMatrix4fv(spotLightPassViewProjectionILoc, 1, GL_FALSE, &ViewProjectionI[0][0]);
+		glUniform2fv(spotLightPassProjectionParamsLoc, 1, &ProjectionParams[0]);
+		glUniform2fv(spotLightPassResolutionLoc, 1, &resolution[0]);
+
+		{
+			auto spotLightPosition = glm::vec3(1.0f, 2.0f, 1.0f);
+			auto spotLightIntensity = 6000.0f;
+			auto spotLightColor = glm::vec3(1.0, 0.5, 0.5);
+			auto spotLightRange = 10.0f;
+			auto spotLightDirection = glm::vec3(-1.0, -1.0, -1.0);
+			auto spotLightAngle = glm::radians(45.0f);
+			auto spotLightBlend = 0.15f;
+
+			auto SpotLightModel = glm::translate(glm::mat4(1.0), spotLightPosition);
+			SpotLightModel = glm::scale(SpotLightModel, glm::vec3(spotLightRange + 0.1));
+			auto SpotLightModelViewProjection = Projection * View * SpotLightModel;
+
+			glUseProgram(punctualLightStencilPassShaderProgram);
+
+			glUniformMatrix4fv(punctualLightStencilPassModelViewProjectionLoc, 1, GL_FALSE, &SpotLightModelViewProjection[0][0]);
+
+			glEnable(GL_DEPTH_TEST);
+
+			glDisable(GL_CULL_FACE);
+
+			glStencilMask(255);
+			glClear(GL_STENCIL_BUFFER_BIT);
+
+			glStencilFunc(GL_ALWAYS, 0, 0);
+			glStencilOpSeparate(GL_BACK, GL_KEEP, GL_INCR_WRAP, GL_KEEP);
+			glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_DECR_WRAP, GL_KEEP);
+
+			glDrawBuffer(GL_NONE);
+			glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+
+			glBindVertexArray(sphereVAO);
+			glDrawElements(GL_TRIANGLES, sphereIndices.size(), GL_UNSIGNED_INT, 0);
+
+			glUseProgram(spotLightPassShaderProgram);
+
+			glUniform3fv(spotLightPassWorldCameraPosLoc, 1, &cameraPos[0]);
+			glUniformMatrix4fv(spotLightPassViewProjectionILoc, 1, GL_FALSE, &ViewProjectionI[0][0]);
+			glUniform2fv(spotLightPassProjectionParamsLoc, 1, &ProjectionParams[0]);
+			glUniform2fv(spotLightPassResolutionLoc, 1, &resolution[0]);
+
+			glUniform3fv(spotLightPassWorldLightPosition, 1, &spotLightPosition[0]);
+			glUniform1fv(spotLightPassLightIntensityLoc, 1, &spotLightIntensity);
+			glUniform3fv(spotLightPassLightColorLoc, 1, &spotLightColor[0]);
+			glUniform1fv(spotLightPassLightRangeLoc, 1, &spotLightRange);
+			glUniform3fv(spotLightPassLightDirectionLoc, 1, &spotLightDirection[0]);
+			glUniform1fv(spotLightPassLightAngleLoc, 1, &spotLightAngle);
+			glUniform1fv(spotLightPassLightBlendLoc, 1, &spotLightBlend);
+
+			glUniformMatrix4fv(spotLightPassModelViewProjectionLoc, 1, GL_FALSE, &SpotLightModelViewProjection[0][0]);
+
+			glUniform1i(spotLightPassGBuffer0Loc, 0);
+			glUniform1i(spotLightPassGBuffer1Loc, 1);
+			glUniform1i(spotLightPassGBuffer2Loc, 2);
+			glUniform1i(spotLightPassGBuffer3Loc, 3);
+
+			glDisable(GL_DEPTH_TEST);
+
+			glStencilFunc(GL_NOTEQUAL, 0, 255);
+			glStencilMask(0);
+			glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+
+			glEnable(GL_CULL_FACE);
+			glCullFace(GL_FRONT);
+
+			glDrawBuffer(GL_COLOR_ATTACHMENT0);
+			glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+
+			glBindVertexArray(sphereVAO);
+			glDrawElements(GL_TRIANGLES, sphereIndices.size(), GL_UNSIGNED_INT, 0);
+
+			glCullFace(GL_BACK);
+		}
 
 		// Postprocess
 		glDisable(GL_STENCIL_TEST);
