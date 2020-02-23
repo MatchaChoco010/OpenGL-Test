@@ -457,6 +457,9 @@ int main() {
 	const GLuint emissiveAndDirectionalLightPassViewProjectionILoc = glGetUniformLocation(emissiveAndDirectionalLightPassShaderProgram, "ViewProjectionI");
 	const GLuint emissiveAndDirectionalLightPassProjectionParamsLoc = glGetUniformLocation(emissiveAndDirectionalLightPassShaderProgram, "ProjectionParams");
 
+	const GLuint punctualLightStencilPassShaderProgram = createProgram("PunctualLightStencilPass.vert", "PunctualLightStencilPass.frag");
+	const GLuint punctualLightStencilPassModelViewProjectionLoc = glGetUniformLocation(punctualLightStencilPassShaderProgram, "ModelViewProjection");
+
 	const GLuint pointLightPassShaderProgram = createProgram("PointLightPass.vert", "PointLightPass.frag");
 	const GLuint pointLightPassModelViewProjectionLoc = glGetUniformLocation(pointLightPassShaderProgram, "ModelViewProjection");
 	const GLuint pointLightPassGBuffer0Loc = glGetUniformLocation(pointLightPassShaderProgram, "GBuffer0");
@@ -569,9 +572,9 @@ int main() {
 	while (glfwWindowShouldClose(window) == GL_FALSE) {
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		auto cameraPos = glm::vec3(0, 0, 15);
+		auto cameraPos = glm::vec3(0, 0, 5);
 		auto near = 1.0f;
-		auto far =20.0f;
+		auto far =50.0f;
 		auto ProjectionParams = glm::vec2(near, far);
 		auto resolution = glm::vec2(width, height);
 
@@ -582,7 +585,7 @@ int main() {
 
 		auto DirectionalLightDirection = glm::vec3(0, -1, -0.5);
 		//auto DirectionalLightIntensity = 100000.0f;
-		auto DirectionalLightIntensity = 1000.0f;
+		auto DirectionalLightIntensity = 700.0f;
 		auto DirectionalLightColor = glm::vec3(1.0, 1.0, 1.0);
 
 		auto aperture = 16.0f;
@@ -591,9 +594,11 @@ int main() {
 
 
 		// Geometry Pass
-		glStencilFunc(GL_ALWAYS, 1, 0xFF);
+		glEnable(GL_STENCIL_TEST);
+
+		glStencilFunc(GL_ALWAYS, 128, 128);
 		glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
-		glStencilMask(0xFF);
+		glStencilMask(255);
 		glDepthMask(GL_TRUE);
 		glEnable(GL_DEPTH_TEST);
 		glDisable(GL_BLEND);
@@ -648,7 +653,6 @@ int main() {
 		glUniform1i(geometryPassEmissiveMapLoc, 5);
 
 		glDepthFunc(GL_LESS);
-		glEnable(GL_DEPTH_TEST);
 
 		glBindVertexArray(vao);
 		glDrawArrays(GL_TRIANGLES, 0, vertices.size());
@@ -657,13 +661,15 @@ int main() {
 		// Emissive and DirectionalLight Pass
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, GBufferDepthBuffer);
 		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, HDRDepthBuffer);
-		glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_STENCIL_BUFFER_BIT, GL_NEAREST);
+		glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT, GL_NEAREST);
 
-		glStencilFunc(GL_EQUAL, 1, 255);
+		glStencilFunc(GL_EQUAL, 128, 128);
 		glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
-		glStencilMask(0x00);
+		glStencilMask(0);
+
 		glDepthMask(GL_FALSE);
 		glDisable(GL_DEPTH_TEST);
+
 		glEnable(GL_BLEND);
 		glBlendEquation(GL_FUNC_ADD);
 		glBlendFunc(GL_ONE, GL_ONE);
@@ -690,12 +696,10 @@ int main() {
 		glUniform1i(emissiveAndDirectionalLightPassGBuffer2Loc, 2);
 		glUniform1i(emissiveAndDirectionalLightPassGBuffer3Loc, 3);
 
-		glDrawBuffer(GL_BACK);
+		glDrawBuffer(GL_COLOR_ATTACHMENT0);
 		glBindFramebuffer(GL_FRAMEBUFFER, HDRFBO);
 		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-		glClearDepth(1.0);
-		glClearStencil(0.0);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+		glClear(GL_COLOR_BUFFER_BIT);
 
 		glBindVertexArray(fullscreenMeshVAO);
 		glDrawArrays(GL_TRIANGLES, 0, 3);
@@ -710,19 +714,48 @@ int main() {
 		glUniform2fv(pointLightPassResolutionLoc, 1, &resolution[0]);
 
 		{
-			auto pointLightPosition = glm::vec3(-2.0f, 0.0f, 3.0f);
+			auto pointLightPosition = glm::vec3(-2.0f, 0.0f, 0.0f);
 			auto pointLightIntensity = 6000.0f;
 			auto pointLightColor = glm::vec3(0.5, 1.0, 1.0);
 			auto pointLightRange = 10.0f;
+
+			auto PointLightModel = glm::translate(glm::mat4(1.0), pointLightPosition);
+			PointLightModel = glm::scale(PointLightModel, glm::vec3(pointLightRange + 0.1));
+			auto PointLightModelViewProjection = Projection * View * PointLightModel;
+
+			glUseProgram(punctualLightStencilPassShaderProgram);
+
+			glUniformMatrix4fv(punctualLightStencilPassModelViewProjectionLoc, 1, GL_FALSE, &PointLightModelViewProjection[0][0]);
+
+			glEnable(GL_DEPTH_TEST);
+
+			glDisable(GL_CULL_FACE);
+
+			glStencilMask(255);
+			glClear(GL_STENCIL_BUFFER_BIT);
+
+			glStencilFunc(GL_ALWAYS, 0, 0);
+			glStencilOpSeparate(GL_BACK, GL_KEEP, GL_INCR_WRAP, GL_KEEP);
+			glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_DECR_WRAP, GL_KEEP);
+
+			glDrawBuffer(GL_NONE);
+			glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+
+			glBindVertexArray(sphereVAO);
+			glDrawElements(GL_TRIANGLES, sphereIndices.size(), GL_UNSIGNED_INT, 0);
+
+			glUseProgram(pointLightPassShaderProgram);
+
+			glUniform3fv(pointLightPassWorldCameraPosLoc, 1, &cameraPos[0]);
+			glUniformMatrix4fv(pointLightPassViewProjectionILoc, 1, GL_FALSE, &ViewProjectionI[0][0]);
+			glUniform2fv(pointLightPassProjectionParamsLoc, 1, &ProjectionParams[0]);
+			glUniform2fv(pointLightPassResolutionLoc, 1, &resolution[0]);
 
 			glUniform3fv(pointLightPassWorldLightPosition, 1, &pointLightPosition[0]);
 			glUniform1fv(pointLightPassLightIntensityLoc, 1, &pointLightIntensity);
 			glUniform3fv(pointLightPassLightColorLoc, 1, &pointLightColor[0]);
 			glUniform1fv(pointLightPassLightRangeLoc, 1, &pointLightRange);
 
-			auto PointLightModel = glm::translate(glm::mat4(1.0), pointLightPosition);
-			PointLightModel = glm::scale(PointLightModel, glm::vec3(pointLightRange + 0.1));
-			auto PointLightModelViewProjection = Projection * View * PointLightModel;
 			glUniformMatrix4fv(pointLightPassModelViewProjectionLoc, 1, GL_FALSE, &PointLightModelViewProjection[0][0]);
 
 			glUniform1i(pointLightPassGBuffer0Loc, 0);
@@ -730,14 +763,28 @@ int main() {
 			glUniform1i(pointLightPassGBuffer2Loc, 2);
 			glUniform1i(pointLightPassGBuffer3Loc, 3);
 
+			glDisable(GL_DEPTH_TEST);
+
+			glStencilFunc(GL_NOTEQUAL, 0, 255);
+			glStencilMask(0);
+			glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+
+			glEnable(GL_CULL_FACE);
+			glCullFace(GL_FRONT);
+
+			glDrawBuffer(GL_COLOR_ATTACHMENT0);
+			glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+
 			glBindVertexArray(sphereVAO);
 			glDrawElements(GL_TRIANGLES, sphereIndices.size(), GL_UNSIGNED_INT, 0);
+
+			glCullFace(GL_BACK);
 		}
 		
 
 
 		// Postprocess
-		glStencilFunc(GL_ALWAYS, 0, 0);
+		glDisable(GL_STENCIL_TEST);
 
 		glUseProgram(postprocessShaderProgram);
 		glUniform1fv(postprocessApertureLoc, 1, &aperture);
