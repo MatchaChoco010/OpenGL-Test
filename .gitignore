@@ -42,3 +42,4 @@ x64/
 !MultiTexture/testMonkey.obj
 !PBR-Forward/testMonkey.obj
 !PBR-Deferred/testMonkey.obj
+!PBR-Deferred-AutoExposure/testMonkey.obj
