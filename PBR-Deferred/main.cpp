@@ -382,6 +382,55 @@ int main() {
 	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, static_cast<void*>(0));
 	glBindVertexArray(0);
 
+	// îºåaà íuÇÃãÖÇÃVAOÇçÏê¨
+	const int slices = 8, stacks = 8;
+	std::vector<glm::vec3> sphereVertices;
+	for (int j = 0; j <= stacks; ++j)
+	{
+		const float t(static_cast<float>(j) / static_cast<float>(stacks));
+		const float y(cos(3.141593f * t)), r(sin(3.141593f * t));
+		for (int i = 0; i <= slices; ++i)
+		{
+			const float s(static_cast<float>(i) / static_cast<float>(slices));
+			const float z(r * cos(6.283185f * s)), x(r * sin(6.283185f * s));
+			sphereVertices.emplace_back(x, y, z);
+		}
+	}
+	std::vector<GLuint> sphereIndices;
+	for (int j = 0; j < stacks; ++j)
+	{
+		const int k((slices + 1) * j);
+		for (int i = 0; i < slices; ++i)
+		{
+			const GLuint k0(k + i);
+			const GLuint k1(k0 + 1);
+			const GLuint k2(k1 + slices);
+			const GLuint k3(k2 + 1);
+
+			sphereIndices.emplace_back(k0);
+			sphereIndices.emplace_back(k2);
+			sphereIndices.emplace_back(k3);
+
+			sphereIndices.emplace_back(k0);
+			sphereIndices.emplace_back(k3);
+			sphereIndices.emplace_back(k1);
+		}
+	}
+	GLuint sphereVAO;
+	glGenVertexArrays(1, &sphereVAO);
+	glBindVertexArray(sphereVAO);
+	GLuint sphereVerticesVBO;
+	glGenBuffers(1, &sphereVerticesVBO);
+	glBindBuffer(GL_ARRAY_BUFFER, sphereVerticesVBO);
+	glBufferData(GL_ARRAY_BUFFER, sphereVertices.size() * sizeof(glm::vec3), &sphereVertices[0], GL_STATIC_DRAW);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, static_cast<void*>(0));
+	GLuint sphereIndicesIBO;
+	glGenBuffers(1, &sphereIndicesIBO);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, sphereIndicesIBO);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sphereIndices.size() * sizeof(GLuint), &sphereIndices[0], GL_STATIC_DRAW);
+	glBindVertexArray(0);
+
 	// shader programÇéÊìæÇµuniformïœêîÇÃèÍèäÇéÊìæÇ∑ÇÈ
 	const GLuint geometryPassShaderProgram = createProgram("GeometryPass.vert", "GeometryPass.frag");
 	const GLuint geometryPassModelITLoc = glGetUniformLocation(geometryPassShaderProgram, "ModelIT");
@@ -401,14 +450,27 @@ int main() {
 	const GLuint emissiveAndDirectionalLightPassGBuffer1Loc = glGetUniformLocation(emissiveAndDirectionalLightPassShaderProgram, "GBuffer1");
 	const GLuint emissiveAndDirectionalLightPassGBuffer2Loc = glGetUniformLocation(emissiveAndDirectionalLightPassShaderProgram, "GBuffer2");
 	const GLuint emissiveAndDirectionalLightPassGBuffer3Loc = glGetUniformLocation(emissiveAndDirectionalLightPassShaderProgram, "GBuffer3");
-	const GLuint emissiveAndDirectionalLightPassDepthLoc = glGetUniformLocation(emissiveAndDirectionalLightPassShaderProgram, "depth");
 	const GLuint emissiveAndDirectionalLightPassLightDirectionLoc = glGetUniformLocation(emissiveAndDirectionalLightPassShaderProgram, "LightDirection");
 	const GLuint emissiveAndDirectionalLightPassLightIntensityLoc = glGetUniformLocation(emissiveAndDirectionalLightPassShaderProgram, "LightIntensity");
 	const GLuint emissiveAndDirectionalLightPassLightColorLoc = glGetUniformLocation(emissiveAndDirectionalLightPassShaderProgram, "LightColor");
 	const GLuint emissiveAndDirectionalLightPassWorldCameraPosLoc = glGetUniformLocation(emissiveAndDirectionalLightPassShaderProgram, "worldCameraPos");
-	const GLuint emissiveAndDirectionalLightPassProjectionLoc = glGetUniformLocation(emissiveAndDirectionalLightPassShaderProgram, "Projection");
 	const GLuint emissiveAndDirectionalLightPassViewProjectionILoc = glGetUniformLocation(emissiveAndDirectionalLightPassShaderProgram, "ViewProjectionI");
 	const GLuint emissiveAndDirectionalLightPassProjectionParamsLoc = glGetUniformLocation(emissiveAndDirectionalLightPassShaderProgram, "ProjectionParams");
+
+	const GLuint pointLightPassShaderProgram = createProgram("PointLightPass.vert", "PointLightPass.frag");
+	const GLuint pointLightPassModelViewProjectionLoc = glGetUniformLocation(pointLightPassShaderProgram, "ModelViewProjection");
+	const GLuint pointLightPassGBuffer0Loc = glGetUniformLocation(pointLightPassShaderProgram, "GBuffer0");
+	const GLuint pointLightPassGBuffer1Loc = glGetUniformLocation(pointLightPassShaderProgram, "GBuffer1");
+	const GLuint pointLightPassGBuffer2Loc = glGetUniformLocation(pointLightPassShaderProgram, "GBuffer2");
+	const GLuint pointLightPassGBuffer3Loc = glGetUniformLocation(pointLightPassShaderProgram, "GBuffer3");
+	const GLuint pointLightPassWorldLightPosition = glGetUniformLocation(pointLightPassShaderProgram, "worldLightPosition");
+	const GLuint pointLightPassLightIntensityLoc = glGetUniformLocation(pointLightPassShaderProgram, "LightIntensity");
+	const GLuint pointLightPassLightColorLoc = glGetUniformLocation(pointLightPassShaderProgram, "LightColor");
+	const GLuint pointLightPassLightRangeLoc = glGetUniformLocation(pointLightPassShaderProgram, "LightRange");
+	const GLuint pointLightPassWorldCameraPosLoc = glGetUniformLocation(pointLightPassShaderProgram, "worldCameraPos");
+	const GLuint pointLightPassViewProjectionILoc = glGetUniformLocation(pointLightPassShaderProgram, "ViewProjectionI");
+	const GLuint pointLightPassProjectionParamsLoc = glGetUniformLocation(pointLightPassShaderProgram, "ProjectionParams");
+	const GLuint pointLightPassResolutionLoc = glGetUniformLocation(pointLightPassShaderProgram, "resolution");
 
 	const GLuint postprocessShaderProgram = createProgram("Postprocess.vert", "Postprocess.frag");
 	const GLuint postprocessInputTextureLoc = glGetUniformLocation(postprocessShaderProgram, "inputTexture");
@@ -507,10 +569,11 @@ int main() {
 	while (glfwWindowShouldClose(window) == GL_FALSE) {
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		auto cameraPos = glm::vec3(0, 0, 5);
+		auto cameraPos = glm::vec3(0, 0, 15);
 		auto near = 1.0f;
-		auto far =10.0f;
+		auto far =20.0f;
 		auto ProjectionParams = glm::vec2(near, far);
+		auto resolution = glm::vec2(width, height);
 
 		auto View = glm::lookAt(cameraPos, glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
 		auto Projection = glm::perspective(glm::radians(45.0f), 640.f / 480.f, near, far);
@@ -518,18 +581,22 @@ int main() {
 		auto ViewProjectionI = glm::inverse(ViewProjection);
 
 		auto DirectionalLightDirection = glm::vec3(0, -1, -0.5);
-		auto DirectionalLightIntensity = 100000.0f;
+		//auto DirectionalLightIntensity = 100000.0f;
+		auto DirectionalLightIntensity = 1000.0f;
 		auto DirectionalLightColor = glm::vec3(1.0, 1.0, 1.0);
 
 		auto aperture = 16.0f;
 		auto shutterSpeed = 0.01f;
-		auto iso = 100.0f;
+		auto iso = 6400.0f;
 
 
 		// Geometry Pass
 		glStencilFunc(GL_ALWAYS, 1, 0xFF);
 		glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
 		glStencilMask(0xFF);
+		glDepthMask(GL_TRUE);
+		glEnable(GL_DEPTH_TEST);
+		glDisable(GL_BLEND);
 
 		glUseProgram(geometryPassShaderProgram);
 		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, GBufferFBO);
@@ -551,7 +618,7 @@ int main() {
 		auto ModelIT = glm::inverseTranspose(Model);
 		auto ModelView = View * Model;
 
-		auto emissiveIntensity = 20000.0f;
+		auto emissiveIntensity = 200.0f;
 
 		glUniformMatrix4fv(geometryPassModelITLoc, 1, GL_FALSE, &ModelIT[0][0]);
 		glUniformMatrix4fv(geometryPassModelViewLoc, 1, GL_FALSE, &ModelView[0][0]);
@@ -595,13 +662,17 @@ int main() {
 		glStencilFunc(GL_EQUAL, 1, 255);
 		glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
 		glStencilMask(0x00);
+		glDepthMask(GL_FALSE);
+		glDisable(GL_DEPTH_TEST);
+		glEnable(GL_BLEND);
+		glBlendEquation(GL_FUNC_ADD);
+		glBlendFunc(GL_ONE, GL_ONE);
 
 		glUseProgram(emissiveAndDirectionalLightPassShaderProgram);
 		glUniform3fv(emissiveAndDirectionalLightPassLightDirectionLoc, 1, &DirectionalLightDirection[0]);
 		glUniform1fv(emissiveAndDirectionalLightPassLightIntensityLoc, 1, &DirectionalLightIntensity);
 		glUniform3fv(emissiveAndDirectionalLightPassLightColorLoc, 1, &DirectionalLightColor[0]);
 		glUniform3fv(emissiveAndDirectionalLightPassWorldCameraPosLoc, 1, &cameraPos[0]);
-		glUniformMatrix4fv(emissiveAndDirectionalLightPassProjectionLoc, 1, GL_FALSE, &Projection[0][0]);
 		glUniformMatrix4fv(emissiveAndDirectionalLightPassViewProjectionILoc, 1, GL_FALSE, &ViewProjectionI[0][0]);
 		glUniform2fv(emissiveAndDirectionalLightPassProjectionParamsLoc, 1, &ProjectionParams[0]);
 
@@ -628,6 +699,41 @@ int main() {
 
 		glBindVertexArray(fullscreenMeshVAO);
 		glDrawArrays(GL_TRIANGLES, 0, 3);
+
+
+		// Point Light Pass
+		glUseProgram(pointLightPassShaderProgram);
+
+		glUniform3fv(pointLightPassWorldCameraPosLoc, 1, &cameraPos[0]);
+		glUniformMatrix4fv(pointLightPassViewProjectionILoc, 1, GL_FALSE, &ViewProjectionI[0][0]);
+		glUniform2fv(pointLightPassProjectionParamsLoc, 1, &ProjectionParams[0]);
+		glUniform2fv(pointLightPassResolutionLoc, 1, &resolution[0]);
+
+		{
+			auto pointLightPosition = glm::vec3(-2.0f, 0.0f, 3.0f);
+			auto pointLightIntensity = 6000.0f;
+			auto pointLightColor = glm::vec3(0.5, 1.0, 1.0);
+			auto pointLightRange = 10.0f;
+
+			glUniform3fv(pointLightPassWorldLightPosition, 1, &pointLightPosition[0]);
+			glUniform1fv(pointLightPassLightIntensityLoc, 1, &pointLightIntensity);
+			glUniform3fv(pointLightPassLightColorLoc, 1, &pointLightColor[0]);
+			glUniform1fv(pointLightPassLightRangeLoc, 1, &pointLightRange);
+
+			auto PointLightModel = glm::translate(glm::mat4(1.0), pointLightPosition);
+			PointLightModel = glm::scale(PointLightModel, glm::vec3(pointLightRange + 0.1));
+			auto PointLightModelViewProjection = Projection * View * PointLightModel;
+			glUniformMatrix4fv(pointLightPassModelViewProjectionLoc, 1, GL_FALSE, &PointLightModelViewProjection[0][0]);
+
+			glUniform1i(pointLightPassGBuffer0Loc, 0);
+			glUniform1i(pointLightPassGBuffer1Loc, 1);
+			glUniform1i(pointLightPassGBuffer2Loc, 2);
+			glUniform1i(pointLightPassGBuffer3Loc, 3);
+
+			glBindVertexArray(sphereVAO);
+			glDrawElements(GL_TRIANGLES, sphereIndices.size(), GL_UNSIGNED_INT, 0);
+		}
+		
 
 
 		// Postprocess

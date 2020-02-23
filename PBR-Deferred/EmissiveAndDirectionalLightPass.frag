@@ -10,11 +10,10 @@ uniform sampler2D GBuffer2;
 uniform sampler2D GBuffer3;
 
 uniform vec3 LightDirection;
-uniform float LightIntensity;
+uniform float LightIntensity; // lx
 uniform vec3 LightColor;
 
 uniform vec3 worldCameraPos;
-uniform mat4 Projection;
 uniform mat4 ViewProjectionI;
 uniform vec2 ProjectionParams; // x: near, y: far
 
