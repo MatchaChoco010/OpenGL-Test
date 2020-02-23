@@ -165,5 +165,5 @@ void main()
   vec3 L = normalize(-LightDirection);
   vec3 H = normalize(L + V);
   vec3 irradiance = LightIntensity * LightColor * dot(N, L);
-  outRadiance = emissive + DisneyBRDF(L, V, N, H, tangent, bitangent, albedo, subsurface, metallic, specular, specularTint, roughness, anisotropic, sheen, sheenTint, clearcoat, clearcoatGloss) * irradiance;
+  outRadiance = emissive + DisneyBRDF(L, V, N, H, tangent, bitangent, albedo, subsurface, metallic, specular, specularTint, roughness, anisotropic, sheen, sheenTint, clearcoat, clearcoatGloss) * irradiance * ao;
 }
