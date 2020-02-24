@@ -259,6 +259,46 @@ GLuint loadTexture(const char* path, const bool sRGB = false)
 }
 
 
+const float MIN_ISO = 100.0f;
+const float MAX_ISO = 6400.0f;
+const float MIN_APERTURE = 1.8;
+const float MAX_APERTURE = 22.0;
+const float MIN_SHUTTER = 1.0f / 4000.0f;
+const float MAX_SHUTTER = 1.0f / 30.0f;
+
+inline float Sqr(float x) { return x * x; }
+
+float ComputeISO(float aperture, float shutterSpeed, float ev)
+{
+	return (Sqr(aperture) * 100.0f) / (shutterSpeed * powf(2.0f, ev));
+}
+
+float ComputeEV(float aperture, float shutterSpeed, float iso)
+{
+	return std::log2((Sqr(aperture) * 100.0f) / (shutterSpeed * iso));
+}
+
+float ComputeTargetEV(float averageLuminance)
+{
+	static const float K = 12.5f;
+	return std::log2(averageLuminance * 100.0f / K);
+}
+
+void ApplyProgramAuto(float focalLength, float targetEV, float& aperture, float& shutterSpeed, float& iso)
+{
+	aperture = 4.0f;
+	shutterSpeed = 1.0f / (focalLength * 1000.0f);
+
+	iso = std::clamp(ComputeISO(aperture, shutterSpeed, targetEV), MIN_ISO, MAX_ISO);
+
+	float evDiff = targetEV - ComputeEV(aperture, shutterSpeed, iso);
+	aperture = std::clamp(aperture * powf(std::sqrt(2.0f), evDiff * 0.5f), MIN_APERTURE, MAX_APERTURE);
+
+	evDiff = targetEV - ComputeEV(aperture, shutterSpeed, iso);
+	shutterSpeed = std::clamp(shutterSpeed * powf(2.0f, -evDiff), MIN_SHUTTER, MAX_SHUTTER);
+}
+
+
 int main() {
 	glfwSetErrorCallback([](auto id, auto description) { std::cerr << description << std::endl; });
 	// GLFW‚Ì‰Šú‰»
@@ -493,6 +533,9 @@ int main() {
 	const GLuint spotLightPassProjectionParamsLoc = glGetUniformLocation(spotLightPassShaderProgram, "ProjectionParams");
 	const GLuint spotLightPassResolutionLoc = glGetUniformLocation(spotLightPassShaderProgram, "resolution");
 
+	const GLuint logAverageShaderProgram = createProgram("LogAveragePass.vert", "LogAveragePass.frag");
+	const GLuint logAveragePassInputTextureLoc = glGetUniformLocation(logAverageShaderProgram, "inputTexture");
+
 	const GLuint postprocessShaderProgram = createProgram("Postprocess.vert", "Postprocess.frag");
 	const GLuint postprocessInputTextureLoc = glGetUniformLocation(postprocessShaderProgram, "inputTexture");
 	const GLuint postprocessApertureLoc = glGetUniformLocation(postprocessShaderProgram, "aperture");
@@ -585,12 +628,40 @@ int main() {
 	}
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+	GLuint LogAverageBuffer;
+	glGenTextures(1, &LogAverageBuffer);
+	glBindTexture(GL_TEXTURE_2D, LogAverageBuffer);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, width, height, 0, GL_RGB, GL_FLOAT, nullptr);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	GLuint LogAverageFBO;
+	glGenFramebuffers(1, &LogAverageFBO);
+	glBindFramebuffer(GL_FRAMEBUFFER, LogAverageFBO);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, LogAverageBuffer, 0);
+	if (GLenum Status = glCheckFramebufferStatus(GL_FRAMEBUFFER); Status != GL_FRAMEBUFFER_COMPLETE) {
+		std::cerr << "Framebuffer Error: " << Status << std::endl;
+		return false;
+	}
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
 	glfwSetTime(0.0);
 
+	float Lavg = 10.0f;
+	float deltaTime = 0.0f;
+	float prevTime = 0.0;
+
 	while (glfwWindowShouldClose(window) == GL_FALSE) {
+		deltaTime = static_cast<float>(glfwGetTime()) - prevTime;
+		prevTime = static_cast<float>(glfwGetTime());
+
+
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		auto cameraPos = glm::vec3(0, 0, 5);
+
+		auto cameraPos = glm::vec3(0, 2, 10);
 		auto near = 1.0f;
 		auto far = 50.0f;
 		auto ProjectionParams = glm::vec2(near, far);
@@ -605,10 +676,6 @@ int main() {
 		//auto DirectionalLightIntensity = 100000.0f;
 		auto DirectionalLightIntensity = 700.0f;
 		auto DirectionalLightColor = glm::vec3(1.0, 1.0, 1.0);
-
-		auto aperture = 16.0f;
-		auto shutterSpeed = 0.01f;
-		auto iso = 6400.0f;
 
 
 		// Geometry Pass
@@ -641,7 +708,7 @@ int main() {
 		auto ModelIT = glm::inverseTranspose(Model);
 		auto ModelView = View * Model;
 
-		auto emissiveIntensity = 200.0f;
+		auto emissiveIntensity = 2000.0f;
 
 		glUniformMatrix4fv(geometryPassModelITLoc, 1, GL_FALSE, &ModelIT[0][0]);
 		glUniformMatrix4fv(geometryPassModelViewLoc, 1, GL_FALSE, &ModelView[0][0]);
@@ -672,6 +739,14 @@ int main() {
 
 		glDepthFunc(GL_LESS);
 
+		glBindVertexArray(vao);
+		glDrawArrays(GL_TRIANGLES, 0, vertices.size());
+
+		auto Model1 = glm::translate(Model, glm::vec3(0, 1, 0));
+		auto Model1IT = glm::inverseTranspose(Model1);
+		auto ModelView1 = View * Model1;
+		glUniformMatrix4fv(geometryPassModelITLoc, 1, GL_FALSE, &Model1IT[0][0]);
+		glUniformMatrix4fv(geometryPassModelViewLoc, 1, GL_FALSE, &ModelView1[0][0]);
 		glBindVertexArray(vao);
 		glDrawArrays(GL_TRIANGLES, 0, vertices.size());
 
@@ -717,6 +792,7 @@ int main() {
 		glDrawBuffer(GL_COLOR_ATTACHMENT0);
 		glBindFramebuffer(GL_FRAMEBUFFER, HDRFBO);
 		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+		//glClearColor(1.0f, 0.3f, 0.3f, 0.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 
 		glBindVertexArray(fullscreenMeshVAO);
@@ -882,6 +958,41 @@ int main() {
 			glCullFace(GL_BACK);
 		}
 
+
+		// Calc Log Average
+		glDisable(GL_STENCIL_TEST);
+		glUseProgram(logAverageShaderProgram);
+
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, HDRColorBuffer);
+
+		glUniform1i(logAveragePassInputTextureLoc, 0);
+
+		glBindFramebuffer(GL_FRAMEBUFFER, LogAverageFBO);
+		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+		glClear(GL_COLOR_BUFFER_BIT);
+
+		glBindVertexArray(fullscreenMeshVAO);
+		glDrawArrays(GL_TRIANGLES, 0, 3);
+
+		glBindTexture(GL_TEXTURE_2D, LogAverageBuffer);
+		glGenerateMipmap(GL_TEXTURE_2D);
+
+		const int level = static_cast<int>(std::log2(std::max(width, height)));
+		float pixel[3];
+		glGetTexImage(GL_TEXTURE_2D, level, GL_RGB, GL_FLOAT, &pixel);
+		float Lnew = std::expf(pixel[0]);
+		Lavg = Lavg + (Lnew - Lavg) * (1 - std::expf(-1 * deltaTime * 1.0));
+
+		const auto targetEV = ComputeTargetEV(Lavg);
+		const auto EVcomp = -10.0f;
+
+		float aperture, shutterSpeed, iso;
+		ApplyProgramAuto(50, targetEV - EVcomp, aperture, shutterSpeed, iso);
+		
+		glBindTexture(GL_TEXTURE_2D, 0);
+
+
 		// Postprocess
 		glDisable(GL_STENCIL_TEST);
 
@@ -927,4 +1038,6 @@ int main() {
 	glDeleteTextures(1, &GBuffer3ColorBuffer);
 	glDeleteTextures(1, &HDRColorBuffer);
 	glDeleteFramebuffers(1, &HDRFBO);
+	glDeleteTextures(1, &LogAverageBuffer);
+	glDeleteFramebuffers(1, &LogAverageFBO);
 }

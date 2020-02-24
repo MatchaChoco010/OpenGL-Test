@@ -213,5 +213,5 @@ void main()
 
   float distance = length(worldLightPosition - worldPos);
   vec3 irradiance = LightIrradiance(LightIntensity, LightColor, L, N, distance);
-  outRadiance = emissive + DisneyBRDF(L, V, N, H, tangent, bitangent, albedo, subsurface, metallic, specular, specularTint, roughness, anisotropic, sheen, sheenTint, clearcoat, clearcoatGloss) * irradiance * ao;
+  outRadiance = DisneyBRDF(L, V, N, H, tangent, bitangent, albedo, subsurface, metallic, specular, specularTint, roughness, anisotropic, sheen, sheenTint, clearcoat, clearcoatGloss) * irradiance * ao;
 }

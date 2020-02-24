@@ -65,7 +65,8 @@ float DistanceAttenuation(float distance)
   float smoothatt = 1 - pow(distance / LightRange, 4.0);
   smoothatt = max(smoothatt, 0.0);
   smoothatt =  smoothatt * smoothatt;
-  return att * smoothatt;
+  // return att * smoothatt;
+  return 1;
 }
 
 float AngleAttenuation(vec3 L)
@@ -82,7 +83,7 @@ float AngleAttenuation(vec3 L)
 
 vec3 LightIrradiance(float intensity, vec3 color, vec3 L, vec3 N, float distance)
 {
-  return 1.0 / PI * intensity * color * dot(L, N) * DistanceAttenuation(distance) * AngleAttenuation(L);
+  return 1.0 / PI * intensity * color * max(0, dot(L, N)) * DistanceAttenuation(distance) * AngleAttenuation(L);
 }
 
 
@@ -213,5 +214,5 @@ void main()
 
   float distance = length(worldLightPosition - worldPos);
   vec3 irradiance = LightIrradiance(LightIntensity, LightColor, L, N, distance);
-  outRadiance = emissive + DisneyBRDF(L, V, N, H, tangent, bitangent, albedo, subsurface, metallic, specular, specularTint, roughness, anisotropic, sheen, sheenTint, clearcoat, clearcoatGloss) * irradiance * ao;
+  outRadiance = DisneyBRDF(L, V, N, H, tangent, bitangent, albedo, subsurface, metallic, specular, specularTint, roughness, anisotropic, sheen, sheenTint, clearcoat, clearcoatGloss) * irradiance * ao;
 }

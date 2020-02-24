@@ -67,7 +67,7 @@ float DistanceAttenuation(float distance)
 
 vec3 LightIrradiance(float intensity, vec3 color, vec3 L, vec3 N, float distance)
 {
-  return 1.0 / (4.0 * PI) * intensity * color * dot(L, N) * DistanceAttenuation(distance);
+  return 1.0 / (4.0 * PI) * intensity * color * max(0, dot(L, N)) * DistanceAttenuation(distance);
 }
 
 
@@ -198,5 +198,8 @@ void main()
 
   float distance = length(worldLightPosition - worldPos);
   vec3 irradiance = LightIrradiance(LightIntensity, LightColor, L, N, distance);
-  outRadiance = emissive + DisneyBRDF(L, V, N, H, tangent, bitangent, albedo, subsurface, metallic, specular, specularTint, roughness, anisotropic, sheen, sheenTint, clearcoat, clearcoatGloss) * irradiance * ao;
+  outRadiance = DisneyBRDF(L, V, N, H, tangent, bitangent, albedo, subsurface, metallic, specular, specularTint, roughness, anisotropic, sheen, sheenTint, clearcoat, clearcoatGloss) * irradiance * ao;
+
+  if (isnan(outRadiance.x) || isnan(outRadiance.y) || isnan(outRadiance.z))
+    outRadiance = vec3(0.0);
 }

@@ -13,6 +13,8 @@ uniform float iso = 100;
 
 const float PI = 3.14159265358979323846;
 
+const float HALF_MAX = 65504.0;
+
 
 // ###############
 // Physically Based Camera Exposure
@@ -82,8 +84,6 @@ float SaturationBasedExposure(float aperture, float shutterSpeed, float iso)
 // ############################################################################
 
 // https://github.com/ampas/aces-dev/blob/master/transforms/ctl/README-MATRIX.md
-
-#define float_MAX 65504.0
 
 const mat3 sRGB_2_AP0 = mat3(
   0.4397010, 0.0897923, 0.0175440,
@@ -404,9 +404,9 @@ vec3 RRT(vec3 aces)
   aces.r += hueWeight * saturation * (RRT_RED_PIVOT - aces.r) * (1.0 - RRT_RED_SCALE);
 
   // --- ACES to RGB rendering space --- //
-  aces = clamp(aces, 0.0, float_MAX);  // avoids saturated negative colors from becoming positive in the matrix
+  aces = clamp(aces, 0.0, HALF_MAX);  // avoids saturated negative colors from becoming positive in the matrix
   vec3 rgbPre = AP0_2_AP1_MAT * aces;
-  rgbPre = clamp(rgbPre, 0.0, float_MAX);
+  rgbPre = clamp(rgbPre, 0.0, HALF_MAX);
 
   // --- Global desaturation --- //
   rgbPre = RRT_SAT_MAT * rgbPre;
@@ -450,7 +450,7 @@ vec3 darkSurround_to_dimSurround(vec3 linearCV)
   vec3 XYZ = AP1_2_XYZ_MAT * linearCV;
 
   vec3 xyY = XYZ_2_xyY(XYZ);
-  xyY.z = clamp(xyY.z, 0.0, float_MAX);
+  xyY.z = clamp(xyY.z, 0.0, HALF_MAX);
   xyY.z = pow(xyY.z, DIM_SURROUND_GAMMA);
   XYZ = xyY_2_XYZ(xyY);
 
@@ -556,6 +556,7 @@ vec3 LinearToSRGB( vec3 color )
 void main()
 {
   vec3 inputColor = texture(inputTexture, vUv).rgb;
+  inputColor = clamp(inputColor, 0, HALF_MAX);
 
   float exposure = SaturationBasedExposure(aperture, shutterSpeed, iso);
 
