@@ -66,7 +66,7 @@ float getShadowAttenuation(vec3 worldPos)
       shadow += texture(ShadowMap, UVC).x;
     }
   }
-  return shadow;
+  return shadow / 9.0;
 }
 
 
