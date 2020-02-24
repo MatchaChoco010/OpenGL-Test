@@ -43,3 +43,5 @@ x64/
 !PBR-Forward/testMonkey.obj
 !PBR-Deferred/testMonkey.obj
 !PBR-Deferred-AutoExposure/testMonkey.obj
+!PBR-Deferred-Shadow/testMonkey.obj
+!PBR-Deferred-Shadow/floor.obj
