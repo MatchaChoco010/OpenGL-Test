@@ -698,10 +698,12 @@ int main() {
 	glGenTextures(1, &DirectionalShadowMap);
 	glBindTexture(GL_TEXTURE_2D, DirectionalShadowMap);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, directionalShadowMapSize, directionalShadowMapSize, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	GLuint DirectionalShadowMapFBO;
 	glGenFramebuffers(1, &DirectionalShadowMapFBO);
 	glBindFramebuffer(GL_FRAMEBUFFER, DirectionalShadowMapFBO);
@@ -849,8 +851,8 @@ int main() {
 		glUseProgram(directionalShadowMapPassShaderProgram);
 		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, DirectionalShadowMapFBO);
 
-		auto DirectionalLightOffsetFactor = 1.1f;
-		auto DirectionalLightOffsetUnits = 4.0f;
+		auto DirectionalLightOffsetFactor = 2.0f;
+		auto DirectionalLightOffsetUnits = 5.0f;
 
 		glPolygonOffset(DirectionalLightOffsetFactor, DirectionalLightOffsetUnits);
 		glEnable(GL_POLYGON_OFFSET_FILL);
@@ -1126,7 +1128,7 @@ int main() {
 		Lavg = Lavg + (Lnew - Lavg) * (1 - std::expf(-1 * deltaTime * 1.0));
 
 		const auto targetEV = ComputeTargetEV(Lavg);
-		const auto EVcomp = -2.0f;
+		const auto EVcomp = -5.0f;
 
 		float aperture, shutterSpeed, iso;
 		ApplyProgramAuto(50, targetEV - EVcomp, aperture, shutterSpeed, iso);

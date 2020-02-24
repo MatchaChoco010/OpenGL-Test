@@ -17,7 +17,7 @@ uniform vec3 worldCameraPos;
 uniform mat4 ViewProjectionI;
 uniform vec2 ProjectionParams; // x: near, y: far
 
-uniform sampler2D ShadowMap;
+uniform sampler2DShadow ShadowMap;
 uniform mat4 LightViewProjection;
 
 
@@ -46,15 +46,27 @@ vec3 worldPosFromDepth(float d)
 
 
 // ##################
-// Shadow
+// 3x3 PCF Shadow
 // ##################
 float getShadowAttenuation(vec3 worldPos)
 {
   vec4 lightPos = LightViewProjection * vec4(worldPos, 1.0);
   vec2 uv = lightPos.xy * vec2(0.5) + vec2(0.5);
-  float depthFromMap = texture(ShadowMap, uv).x;
   float depthFromWorldPos = (lightPos.z / lightPos.w) * 0.5 + 0.5;
-  return (depthFromMap < depthFromWorldPos) ? 0 : 1;
+
+  ivec2 shadowMapSize = textureSize(ShadowMap, 0);
+  vec2 offset = 1.0 / shadowMapSize.xy;
+
+  float shadow = 0.0;
+  for (int i = -1; i <= 1; i++)
+  {
+    for (int j = -1; j <= 1; j++)
+    {
+      vec3 UVC = vec3(uv + offset * vec2(i, j), depthFromWorldPos + 0.00001);
+      shadow += texture(ShadowMap, UVC).x;
+    }
+  }
+  return shadow;
 }
 
 
