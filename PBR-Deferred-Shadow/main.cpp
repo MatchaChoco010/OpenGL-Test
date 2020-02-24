@@ -532,6 +532,9 @@ int main() {
 	const GLuint geometryPassEmissiveMapLoc = glGetUniformLocation(geometryPassShaderProgram, "emissiveMap");
 	const GLuint geometryPassEmissiveIntensityLoc = glGetUniformLocation(geometryPassShaderProgram, "emissiveIntensity");
 
+	const GLuint directionalShadowMapPassShaderProgram = createProgram("DirectionalShadowMapPass.vert", "DirectionalShadowMapPass.frag");
+	const GLuint directionalShadowMapPassModelViewProjectionLoc = glGetUniformLocation(directionalShadowMapPassShaderProgram, "ModelViewProjection");
+
 	const GLuint emissiveAndDirectionalLightPassShaderProgram = createProgram("EmissiveAndDirectionalLightPass.vert", "EmissiveAndDirectionalLightPass.frag");
 	const GLuint emissiveAndDirectionalLightPassGBuffer0Loc = glGetUniformLocation(emissiveAndDirectionalLightPassShaderProgram, "GBuffer0");
 	const GLuint emissiveAndDirectionalLightPassGBuffer1Loc = glGetUniformLocation(emissiveAndDirectionalLightPassShaderProgram, "GBuffer1");
@@ -543,6 +546,8 @@ int main() {
 	const GLuint emissiveAndDirectionalLightPassWorldCameraPosLoc = glGetUniformLocation(emissiveAndDirectionalLightPassShaderProgram, "worldCameraPos");
 	const GLuint emissiveAndDirectionalLightPassViewProjectionILoc = glGetUniformLocation(emissiveAndDirectionalLightPassShaderProgram, "ViewProjectionI");
 	const GLuint emissiveAndDirectionalLightPassProjectionParamsLoc = glGetUniformLocation(emissiveAndDirectionalLightPassShaderProgram, "ProjectionParams");
+	const GLuint emissiveAndDirectionalLightPassShadowMapLoc = glGetUniformLocation(emissiveAndDirectionalLightPassShaderProgram, "ShadowMap");
+	const GLuint emissiveAndDirectionalLightPassLightViewProjectionLoc = glGetUniformLocation(emissiveAndDirectionalLightPassShaderProgram, "LightViewProjection");
 
 	const GLuint punctualLightStencilPassShaderProgram = createProgram("PunctualLightStencilPass.vert", "PunctualLightStencilPass.frag");
 	const GLuint punctualLightStencilPassModelViewProjectionLoc = glGetUniformLocation(punctualLightStencilPassShaderProgram, "ModelViewProjection");
@@ -669,10 +674,6 @@ int main() {
 	glBindFramebuffer(GL_FRAMEBUFFER, HDRFBO);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, HDRColorBuffer, 0);
 	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, HDRDepthBuffer);
-	if (GLenum Status = glCheckFramebufferStatus(GL_FRAMEBUFFER); Status != GL_FRAMEBUFFER_COMPLETE) {
-		std::cerr << "Framebuffer Error: " << Status << std::endl;
-		return false;
-	}
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 	GLuint LogAverageBuffer;
@@ -688,11 +689,29 @@ int main() {
 	glGenFramebuffers(1, &LogAverageFBO);
 	glBindFramebuffer(GL_FRAMEBUFFER, LogAverageFBO);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, LogAverageBuffer, 0);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+
+	// Directional Light Shadow Map
+	const GLuint directionalShadowMapSize = 8192;
+	GLuint DirectionalShadowMap;
+	glGenTextures(1, &DirectionalShadowMap);
+	glBindTexture(GL_TEXTURE_2D, DirectionalShadowMap);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, directionalShadowMapSize, directionalShadowMapSize, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	GLuint DirectionalShadowMapFBO;
+	glGenFramebuffers(1, &DirectionalShadowMapFBO);
+	glBindFramebuffer(GL_FRAMEBUFFER, DirectionalShadowMapFBO);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, DirectionalShadowMap, 0);
 	if (GLenum Status = glCheckFramebufferStatus(GL_FRAMEBUFFER); Status != GL_FRAMEBUFFER_COMPLETE) {
 		std::cerr << "Framebuffer Error: " << Status << std::endl;
 		return false;
 	}
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
 
 	glfwSetTime(0.0);
 
@@ -719,7 +738,7 @@ int main() {
 		auto ViewProjection = Projection * View;
 		auto ViewProjectionI = glm::inverse(ViewProjection);
 
-		auto DirectionalLightDirection = glm::vec3(0, -1, -0.5);
+		auto DirectionalLightDirection = glm::vec3(-0.5, -1, -0.5);
 		//auto DirectionalLightIntensity = 100000.0f;
 		auto DirectionalLightIntensity = 700.0f;
 		auto DirectionalLightColor = glm::vec3(1.0, 1.0, 1.0);
@@ -786,8 +805,6 @@ int main() {
 		glUniform1i(geometryPassNormalMapLoc, 4);
 		glUniform1i(geometryPassEmissiveMapLoc, 5);
 
-		glDepthFunc(GL_LESS);
-
 		glBindVertexArray(vao);
 		glDrawArrays(GL_TRIANGLES, 0, vertices.size());
 
@@ -828,6 +845,45 @@ int main() {
 		glDrawArrays(GL_TRIANGLES, 0, floorVertices.size());
 
 
+		// Directional Light Shadow Pass
+		glUseProgram(directionalShadowMapPassShaderProgram);
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, DirectionalShadowMapFBO);
+
+		auto DirectionalLightOffsetFactor = 1.1f;
+		auto DirectionalLightOffsetUnits = 4.0f;
+
+		glPolygonOffset(DirectionalLightOffsetFactor, DirectionalLightOffsetUnits);
+		glEnable(GL_POLYGON_OFFSET_FILL);
+
+		glStencilFunc(GL_ALWAYS, 0, 0);
+		glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+
+		glClear(GL_DEPTH_BUFFER_BIT);
+
+		glViewport(0, 0, directionalShadowMapSize, directionalShadowMapSize);
+
+		auto DirectionalLightPosition = glm::vec3(0, 0, 0);
+		auto DirectionalLightView = glm::lookAt(DirectionalLightPosition, DirectionalLightPosition + DirectionalLightDirection, glm::vec3(0, 1, 0));
+		auto DirectionalLightProjection = glm::ortho(-100.0f, 100.0f, -100.0f, 100.0f, -10.0f, 100.0f);
+		auto DirectionalLightViewProjection = DirectionalLightProjection * DirectionalLightView;
+
+		auto DirectionalLightModelViewProjection = DirectionalLightViewProjection * Model;
+		glUniformMatrix4fv(directionalShadowMapPassModelViewProjectionLoc, 1, GL_FALSE, &DirectionalLightModelViewProjection[0][0]);
+		glBindVertexArray(vao);
+		glDrawArrays(GL_TRIANGLES, 0, vertices.size());
+
+		auto DirectionalLightModel1ViewProjection = DirectionalLightViewProjection * Model1;
+		glUniformMatrix4fv(directionalShadowMapPassModelViewProjectionLoc, 1, GL_FALSE, &DirectionalLightModel1ViewProjection[0][0]);
+		glDrawArrays(GL_TRIANGLES, 0, vertices.size());
+
+		auto DirectionalLightModelFloorViewProjection = DirectionalLightViewProjection * ModelFloor;
+		glUniformMatrix4fv(directionalShadowMapPassModelViewProjectionLoc, 1, GL_FALSE, &DirectionalLightModelFloorViewProjection[0][0]);
+		glBindVertexArray(floorVao);
+		glDrawArrays(GL_TRIANGLES, 0, floorVertices.size());
+
+		glDisable(GL_POLYGON_OFFSET_FILL);
+
+
 		// Emissive and DirectionalLight Pass
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, GBufferDepthBuffer);
 		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, HDRDepthBuffer);
@@ -843,6 +899,8 @@ int main() {
 		glEnable(GL_BLEND);
 		glBlendEquation(GL_FUNC_ADD);
 		glBlendFunc(GL_ONE, GL_ONE);
+
+		glViewport(0, 0, width, height);
 
 		glUseProgram(emissiveAndDirectionalLightPassShaderProgram);
 		glUniform3fv(emissiveAndDirectionalLightPassLightDirectionLoc, 1, &DirectionalLightDirection[0]);
@@ -866,10 +924,16 @@ int main() {
 		glUniform1i(emissiveAndDirectionalLightPassGBuffer2Loc, 2);
 		glUniform1i(emissiveAndDirectionalLightPassGBuffer3Loc, 3);
 
+		glActiveTexture(GL_TEXTURE4);
+		glBindTexture(GL_TEXTURE_2D, DirectionalShadowMap);
+
+		glUniform1i(emissiveAndDirectionalLightPassShadowMapLoc, 4);
+
+		glUniformMatrix4fv(emissiveAndDirectionalLightPassLightViewProjectionLoc, 1, GL_FALSE, &DirectionalLightViewProjection[0][0]);
+
 		glDrawBuffer(GL_COLOR_ATTACHMENT0);
 		glBindFramebuffer(GL_FRAMEBUFFER, HDRFBO);
 		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-		//glClearColor(1.0f, 0.3f, 0.3f, 0.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 
 		glBindVertexArray(fullscreenMeshVAO);

@@ -17,6 +17,9 @@ uniform vec3 worldCameraPos;
 uniform mat4 ViewProjectionI;
 uniform vec2 ProjectionParams; // x: near, y: far
 
+uniform sampler2D ShadowMap;
+uniform mat4 LightViewProjection;
+
 
 const float PI = 3.14159265358979323846;
 
@@ -39,6 +42,19 @@ vec3 worldPosFromDepth(float d)
   vec4 projectedPos = vec4(vUv.x * 2.0 - 1.0, vUv.y * 2.0 - 1.0, z / w, 1.0);
   vec4 worldPos = ViewProjectionI * projectedPos;
   return worldPos.xyz / worldPos.w;
+}
+
+
+// ##################
+// Shadow
+// ##################
+float getShadowAttenuation(vec3 worldPos)
+{
+  vec4 lightPos = LightViewProjection * vec4(worldPos, 1.0);
+  vec2 uv = lightPos.xy * vec2(0.5) + vec2(0.5);
+  float depthFromMap = texture(ShadowMap, uv).x;
+  float depthFromWorldPos = (lightPos.z / lightPos.w) * 0.5 + 0.5;
+  return (depthFromMap < depthFromWorldPos) ? 0 : 1;
 }
 
 
@@ -160,10 +176,12 @@ void main()
 
   vec3 worldPos = worldPosFromDepth(depth);
 
+  float shadow = getShadowAttenuation(worldPos);
+
   vec3 V = normalize(worldCameraPos - worldPos);
   vec3 N = normalize(normal);
   vec3 L = normalize(-LightDirection);
   vec3 H = normalize(L + V);
   vec3 irradiance = LightIntensity * LightColor * dot(N, L);
-  outRadiance = emissive + DisneyBRDF(L, V, N, H, tangent, bitangent, albedo, subsurface, metallic, specular, specularTint, roughness, anisotropic, sheen, sheenTint, clearcoat, clearcoatGloss) * irradiance * ao;
+  outRadiance = emissive + DisneyBRDF(L, V, N, H, tangent, bitangent, albedo, subsurface, metallic, specular, specularTint, roughness, anisotropic, sheen, sheenTint, clearcoat, clearcoatGloss) * irradiance * ao * shadow;
 }
