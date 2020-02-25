@@ -18,6 +18,9 @@ uniform vec2 ProjectionParams; // x: near, y: far
 
 uniform vec2 resolution;
 
+uniform samplerCubeShadow ShadowMap;
+uniform float shadowBias;
+
 
 const float PI = 3.14159265358979323846;
 
@@ -68,6 +71,17 @@ float DistanceAttenuation(float distance)
 vec3 LightIrradiance(float intensity, vec3 color, vec3 L, vec3 N, float distance)
 {
   return 1.0 / (4.0 * PI) * intensity * color * max(0, dot(L, N)) * DistanceAttenuation(distance);
+}
+
+
+// ##################
+// shadow
+// ##################
+float getShadowAttenuation(vec3 worldPos)
+{
+  vec3 lightToFragVec = worldPos - worldLightPosition;
+  float depth = length(lightToFragVec) / LightRange;
+  return texture(ShadowMap, vec4(lightToFragVec, depth - shadowBias)).x;
 }
 
 
@@ -191,6 +205,8 @@ void main()
 
   vec3 worldPos = worldPosFromDepth(depth, uv);
 
+  float shadow = getShadowAttenuation(worldPos);
+
   vec3 V = normalize(worldCameraPos - worldPos);
   vec3 N = normalize(normal);
   vec3 L = normalize(worldLightPosition - worldPos);
@@ -198,8 +214,5 @@ void main()
 
   float distance = length(worldLightPosition - worldPos);
   vec3 irradiance = LightIrradiance(LightIntensity, LightColor, L, N, distance);
-  outRadiance = DisneyBRDF(L, V, N, H, tangent, bitangent, albedo, subsurface, metallic, specular, specularTint, roughness, anisotropic, sheen, sheenTint, clearcoat, clearcoatGloss) * irradiance * ao;
-
-  if (isnan(outRadiance.x) || isnan(outRadiance.y) || isnan(outRadiance.z))
-    outRadiance = vec3(0.0);
+  outRadiance = DisneyBRDF(L, V, N, H, tangent, bitangent, albedo, subsurface, metallic, specular, specularTint, roughness, anisotropic, sheen, sheenTint, clearcoat, clearcoatGloss) * irradiance * ao * shadow;
 }

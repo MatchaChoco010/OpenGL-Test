@@ -1,10 +1,11 @@
 #define GLEW_STATIC
+#include <array>
 #include <fstream>
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <tuple>
 #include <vector>
-#include <array>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <glm.hpp>
@@ -78,7 +79,139 @@ GLuint createProgram(std::string vertexShaderFile, std::string fragmentShaderFil
 	glCompileShader(fragmentShaderObj);
 	glAttachShader(program, fragmentShaderObj);
 
+	// フラグメントシェーダのチェック
+	glGetShaderiv(fragmentShaderObj, GL_COMPILE_STATUS, &status);
+	if (status == GL_FALSE)
+		std::cerr << "Compile Error in Fragment Shader." << std::endl;
+	glGetShaderiv(fragmentShaderObj, GL_INFO_LOG_LENGTH, &infoLogLength);
+	if (infoLogLength > 1) {
+		std::vector<GLchar> fragmentShaderErrorMessage(infoLogLength);
+		glGetShaderInfoLog(fragmentShaderObj, infoLogLength, nullptr,
+			fragmentShaderErrorMessage.data());
+		std::cerr << fragmentShaderErrorMessage.data() << std::endl;
+	}
+
+	glDeleteShader(fragmentShaderObj);
+
+	// プログラムのリンク
+	glLinkProgram(program);
+
+	// リンクのチェック
+	glGetProgramiv(program, GL_LINK_STATUS, &status);
+	if (status == GL_FALSE)
+		std::cerr << "Link Error." << std::endl;
+	glGetProgramiv(program, GL_INFO_LOG_LENGTH, &infoLogLength);
+	if (infoLogLength > 1) {
+		std::vector<GLchar> programLinkErrorMessage(infoLogLength);
+		glGetProgramInfoLog(program, infoLogLength, nullptr,
+			programLinkErrorMessage.data());
+		std::cerr << programLinkErrorMessage.data() << std::endl;
+	}
+
+	return program;
+}
+
+GLuint createProgramWithGeometryShader(std::string vertexShaderFile, std::string geometryShaderFile, std::string fragmentShaderFile)
+{
+	// 頂点シェーダの読み込み
+	std::ifstream vertexIfs(vertexShaderFile, std::ios::binary);
+	if (vertexIfs.fail())
+	{
+		std::cerr << "Error: Can't open source file: " << vertexShaderFile << std::endl;
+		return 0;
+	}
+	auto vertexShaderSource = std::string(std::istreambuf_iterator<char>(vertexIfs), std::istreambuf_iterator<char>());
+	if (vertexIfs.fail())
+	{
+		std::cerr << "Error: could not read source file: " << vertexShaderFile << std::endl;
+		return 0;
+	}
+	GLchar const* vertexShaderSourcePointer = vertexShaderSource.c_str();
+
+	// ジオメトリシェーダの読み込み
+	std::ifstream geometryIfs(geometryShaderFile, std::ios::binary);
+	if (geometryIfs.fail())
+	{
+		std::cerr << "Error: Can't open source file: " << geometryShaderFile << std::endl;
+		return 0;
+	}
+	auto geometryShaderSource = std::string(std::istreambuf_iterator<char>(geometryIfs), std::istreambuf_iterator<char>());
+	if (geometryIfs.fail())
+	{
+		std::cerr << "Error: could not read source file: " << vertexShaderFile << std::endl;
+		return 0;
+	}
+	GLchar const* geometryShaderSourcePointer = geometryShaderSource.c_str();
+
+	// フラグメントシェーダの読み込み
+	std::ifstream fragmentIfs(fragmentShaderFile, std::ios::binary);
+	if (fragmentIfs.fail())
+	{
+		std::cerr << "Error: Can't open source file: " << fragmentShaderFile << std::endl;
+		return 0;
+	}
+	auto fragmentShaderSource = std::string(std::istreambuf_iterator<char>(fragmentIfs), std::istreambuf_iterator<char>());
+	if (fragmentIfs.fail())
+	{
+		std::cerr << "Error: could not read source file: " << fragmentShaderFile << std::endl;
+		return 0;
+	}
+	GLchar const* fragmentShaderSourcePointer = fragmentShaderSource.c_str();
+
+
+	// プログラムオブジェクトを作成
+	const GLuint program = glCreateProgram();
+
+	GLint status = GL_FALSE;
+	GLsizei infoLogLength;
+
+	// 頂点シェーダのコンパイル
+	const GLuint vertexShaderObj = glCreateShader(GL_VERTEX_SHADER);
+	glShaderSource(vertexShaderObj, 1, &vertexShaderSourcePointer, nullptr);
+	glCompileShader(vertexShaderObj);
+	glAttachShader(program, vertexShaderObj);
+
 	// 頂点シェーダのチェック
+	glGetShaderiv(vertexShaderObj, GL_COMPILE_STATUS, &status);
+	if (status == GL_FALSE)
+		std::cerr << "Compile Error in Vertex Shader." << std::endl;
+	glGetShaderiv(vertexShaderObj, GL_INFO_LOG_LENGTH, &infoLogLength);
+	if (infoLogLength > 1) {
+		std::vector<GLchar> vertexShaderErrorMessage(infoLogLength);
+		glGetShaderInfoLog(vertexShaderObj, infoLogLength, nullptr,
+			vertexShaderErrorMessage.data());
+		std::cerr << vertexShaderErrorMessage.data() << std::endl;
+	}
+
+	glDeleteShader(vertexShaderObj);
+
+	// ジオメトリシェーダのコンパイル
+	const GLuint geometryShaderObj = glCreateShader(GL_GEOMETRY_SHADER);
+	glShaderSource(geometryShaderObj, 1, &geometryShaderSourcePointer, nullptr);
+	glCompileShader(geometryShaderObj);
+	glAttachShader(program, geometryShaderObj);
+
+	// ジオメトリシェーダのチェック
+	glGetShaderiv(geometryShaderObj, GL_COMPILE_STATUS, &status);
+	if (status == GL_FALSE)
+		std::cerr << "Compile Error in Geometry Shader." << std::endl;
+	glGetShaderiv(geometryShaderObj, GL_INFO_LOG_LENGTH, &infoLogLength);
+	if (infoLogLength > 1) {
+		std::vector<GLchar> geometryShaderErrorMessage(infoLogLength);
+		glGetShaderInfoLog(geometryShaderObj, infoLogLength, nullptr,
+			geometryShaderErrorMessage.data());
+		std::cerr << geometryShaderErrorMessage.data() << std::endl;
+	}
+
+	glDeleteShader(geometryShaderObj);
+
+	// フラグメントシェーダのコンパイル
+	const GLuint fragmentShaderObj = glCreateShader(GL_FRAGMENT_SHADER);
+	glShaderSource(fragmentShaderObj, 1, &fragmentShaderSourcePointer, nullptr);
+	glCompileShader(fragmentShaderObj);
+	glAttachShader(program, fragmentShaderObj);
+
+	// フラグメントシェーダのチェック
 	glGetShaderiv(fragmentShaderObj, GL_COMPILE_STATUS, &status);
 	if (status == GL_FALSE)
 		std::cerr << "Compile Error in Fragment Shader." << std::endl;
@@ -549,6 +682,12 @@ int main() {
 	const GLuint emissiveAndDirectionalLightPassShadowMapLoc = glGetUniformLocation(emissiveAndDirectionalLightPassShaderProgram, "ShadowMap");
 	const GLuint emissiveAndDirectionalLightPassLightViewProjectionLoc = glGetUniformLocation(emissiveAndDirectionalLightPassShaderProgram, "LightViewProjection");
 
+	const GLuint pointLightShadowMapPassShaderProgram = createProgramWithGeometryShader("PointLightShadowMapPass.vert", "PointLightShadowMapPass.geom", "PointLightShadowMapPass.frag");
+	const GLuint pointLightShadowMapPassModelLoc = glGetUniformLocation(pointLightShadowMapPassShaderProgram, "Model");
+	const GLuint pointLightShadowMapPassShadowMatricesLoc = glGetUniformLocation(pointLightShadowMapPassShaderProgram, "shadowMatrices");
+	const GLuint pointLightShadowMapPassWorldLightPosLoc = glGetUniformLocation(pointLightShadowMapPassShaderProgram, "worldLightPos");
+	const GLuint pointLightShadowMapPassFarLoc = glGetUniformLocation(pointLightShadowMapPassShaderProgram, "far");
+
 	const GLuint punctualLightStencilPassShaderProgram = createProgram("PunctualLightStencilPass.vert", "PunctualLightStencilPass.frag");
 	const GLuint punctualLightStencilPassModelViewProjectionLoc = glGetUniformLocation(punctualLightStencilPassShaderProgram, "ModelViewProjection");
 
@@ -566,6 +705,8 @@ int main() {
 	const GLuint pointLightPassViewProjectionILoc = glGetUniformLocation(pointLightPassShaderProgram, "ViewProjectionI");
 	const GLuint pointLightPassProjectionParamsLoc = glGetUniformLocation(pointLightPassShaderProgram, "ProjectionParams");
 	const GLuint pointLightPassResolutionLoc = glGetUniformLocation(pointLightPassShaderProgram, "resolution");
+	const GLuint pointLightPassShadowMapLoc = glGetUniformLocation(pointLightPassShaderProgram, "ShadowMap");
+	const GLuint pointLightPassShadowBiasLoc = glGetUniformLocation(pointLightPassShaderProgram, "shadowBias");
 
 	const GLuint spotLightShadowMapPassShaderProgram = createProgram("SpotLightShadowMapPass.vert", "SpotLightShadowMapPass.frag");
 	const GLuint spotLightShadowMapPassModelViewProjectionLoc = glGetUniformLocation(spotLightShadowMapPassShaderProgram, "ModelViewProjection");
@@ -655,11 +796,6 @@ int main() {
 	}
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-	//if (auto err = glGetError(); err != GL_NO_ERROR)
-	//{
-	//	std::cerr << err << std::endl;
-	//}
-
 	GLuint HDRColorBuffer;
 	glGenTextures(1, &HDRColorBuffer);
 	glBindTexture(GL_TEXTURE_2D, HDRColorBuffer);
@@ -709,13 +845,43 @@ int main() {
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glBindTexture(GL_TEXTURE_2D, 0);
 	GLuint DirectionalShadowMapFBO;
 	glGenFramebuffers(1, &DirectionalShadowMapFBO);
 	glBindFramebuffer(GL_FRAMEBUFFER, DirectionalShadowMapFBO);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, DirectionalShadowMap, 0);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-	// SpotLight Shadow Map
+	// Point Light Shadow Map
+	const GLuint pointLightShadowMapSize = 512;
+	GLuint PointLightShadowMap;
+	glGenTextures(1, &PointLightShadowMap);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, PointLightShadowMap);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+	for (int i = 0; i < 6; i++)
+	{
+		glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_DEPTH_COMPONENT, pointLightShadowMapSize, pointLightShadowMapSize, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+	}
+	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+	GLuint PointLightShadowMapFBO;
+	glGenFramebuffers(1, &PointLightShadowMapFBO);
+	glBindFramebuffer(GL_FRAMEBUFFER, PointLightShadowMapFBO);
+	glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, PointLightShadowMap, 0);
+	glDrawBuffer(GL_NONE);
+	glReadBuffer(GL_NONE);
+	if (GLenum Status = glCheckFramebufferStatus(GL_FRAMEBUFFER); Status != GL_FRAMEBUFFER_COMPLETE) {
+		std::cerr << "Framebuffer Error: " << Status << std::endl;
+		return false;
+	}
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	// Spot Light Shadow Map
 	const GLuint spotLightShadowMapSize = 512;
 	GLuint SpotLightShadowMap;
 	glGenTextures(1, &SpotLightShadowMap);
@@ -727,6 +893,7 @@ int main() {
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glBindTexture(GL_TEXTURE_2D, 0);
 	GLuint SpotLightShadowMapFBO;
 	glGenFramebuffers(1, &SpotLightShadowMapFBO);
 	glBindFramebuffer(GL_FRAMEBUFFER, SpotLightShadowMapFBO);
@@ -967,24 +1134,62 @@ int main() {
 
 
 		// Point Light Pass
-		glUseProgram(pointLightPassShaderProgram);
-
-		glUniform3fv(pointLightPassWorldCameraPosLoc, 1, &cameraPos[0]);
-		glUniformMatrix4fv(pointLightPassViewProjectionILoc, 1, GL_FALSE, &ViewProjectionI[0][0]);
-		glUniform2fv(pointLightPassProjectionParamsLoc, 1, &ProjectionParams[0]);
-		glUniform2fv(pointLightPassResolutionLoc, 1, &resolution[0]);
-
 		{
-			/*auto pointLightPosition = glm::vec3(-0.0f, 8.0f, 0.0f);
+			auto pointLightPosition = glm::vec3(-5.0f, 8.0f, 0.0f);
 			auto pointLightIntensity = 24000.0f;
 			auto pointLightColor = glm::vec3(0.5, 1.0, 1.0);
 			auto pointLightRange = 20.0f;
+			auto pointLightShadowBias = 0.001f;
 
+
+			// Point Light Shadow Pass
+			glUseProgram(pointLightShadowMapPassShaderProgram);
+			glBindFramebuffer(GL_FRAMEBUFFER, PointLightShadowMapFBO);
+
+			glStencilFunc(GL_ALWAYS, 0, 0);
+			glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+
+			glViewport(0, 0, pointLightShadowMapSize, pointLightShadowMapSize);
+
+			glDepthMask(GL_TRUE);
+			glEnable(GL_DEPTH_TEST);
+
+			glClear(GL_DEPTH_BUFFER_BIT);
+			auto PointLightShadowProjection = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, pointLightRange);
+			glm::mat4 ShadowTransforms[] = {
+				PointLightShadowProjection * glm::lookAt(pointLightPosition, pointLightPosition + glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)),
+				PointLightShadowProjection * glm::lookAt(pointLightPosition, pointLightPosition + glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)),
+				PointLightShadowProjection * glm::lookAt(pointLightPosition, pointLightPosition + glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f)),
+				PointLightShadowProjection * glm::lookAt(pointLightPosition, pointLightPosition + glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f)),
+				PointLightShadowProjection * glm::lookAt(pointLightPosition, pointLightPosition + glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f)),
+				PointLightShadowProjection * glm::lookAt(pointLightPosition, pointLightPosition + glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f)),
+			};
+
+			glUniformMatrix4fv(pointLightShadowMapPassShadowMatricesLoc, 6, GL_FALSE, &ShadowTransforms[0][0][0]);
+			glUniform1fv(pointLightShadowMapPassFarLoc, 1, &pointLightRange);
+			glUniform3fv(pointLightShadowMapPassWorldLightPosLoc, 1, &pointLightPosition[0]);
+
+			glUniformMatrix4fv(pointLightShadowMapPassModelLoc, 1, GL_FALSE, &Model[0][0]);
+			glBindVertexArray(vao);
+			glDrawArrays(GL_TRIANGLES, 0, vertices.size());
+
+			glUniformMatrix4fv(pointLightShadowMapPassModelLoc, 1, GL_FALSE, &Model1[0][0]);
+			glDrawArrays(GL_TRIANGLES, 0, vertices.size());
+
+			glUniformMatrix4fv(pointLightShadowMapPassModelLoc, 1, GL_FALSE, &ModelFloor[0][0]);
+			glBindVertexArray(floorVao);
+			glDrawArrays(GL_TRIANGLES, 0, floorVertices.size());
+
+			glViewport(0, 0, width, height);
+
+
+			// Punctual Light Stencil Pass
 			auto PointLightModel = glm::translate(glm::mat4(1.0), pointLightPosition);
 			PointLightModel = glm::scale(PointLightModel, glm::vec3(pointLightRange + 0.1));
 			auto PointLightModelViewProjection = Projection * View * PointLightModel;
 
 			glUseProgram(punctualLightStencilPassShaderProgram);
+			glBindFramebuffer(GL_FRAMEBUFFER, HDRFBO);
 
 			glUniformMatrix4fv(punctualLightStencilPassModelViewProjectionLoc, 1, GL_FALSE, &PointLightModelViewProjection[0][0]);
 
@@ -1005,6 +1210,8 @@ int main() {
 			glBindVertexArray(sphereVAO);
 			glDrawElements(GL_TRIANGLES, sphereIndices.size(), GL_UNSIGNED_INT, 0);
 
+
+			// Point Light Lighting Pass
 			glUseProgram(pointLightPassShaderProgram);
 
 			glUniform3fv(pointLightPassWorldCameraPosLoc, 1, &cameraPos[0]);
@@ -1019,10 +1226,26 @@ int main() {
 
 			glUniformMatrix4fv(pointLightPassModelViewProjectionLoc, 1, GL_FALSE, &PointLightModelViewProjection[0][0]);
 
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, GBuffer0ColorBuffer);
+			glActiveTexture(GL_TEXTURE1);
+			glBindTexture(GL_TEXTURE_2D, GBuffer1ColorBuffer);
+			glActiveTexture(GL_TEXTURE2);
+			glBindTexture(GL_TEXTURE_2D, GBuffer2ColorBuffer);
+			glActiveTexture(GL_TEXTURE3);
+			glBindTexture(GL_TEXTURE_2D, GBuffer3ColorBuffer);
+
 			glUniform1i(pointLightPassGBuffer0Loc, 0);
 			glUniform1i(pointLightPassGBuffer1Loc, 1);
 			glUniform1i(pointLightPassGBuffer2Loc, 2);
 			glUniform1i(pointLightPassGBuffer3Loc, 3);
+
+			glActiveTexture(GL_TEXTURE4);
+			glBindTexture(GL_TEXTURE_CUBE_MAP, PointLightShadowMap);
+
+			glUniform1i(pointLightPassShadowMapLoc, 4);
+
+			glUniform1fv(pointLightPassShadowBiasLoc, 1, &pointLightShadowBias);
 
 			glDisable(GL_DEPTH_TEST);
 
@@ -1039,7 +1262,7 @@ int main() {
 			glBindVertexArray(sphereVAO);
 			glDrawElements(GL_TRIANGLES, sphereIndices.size(), GL_UNSIGNED_INT, 0);
 
-			glCullFace(GL_BACK);*/
+			glCullFace(GL_BACK);
 		}
 
 
@@ -1264,4 +1487,10 @@ int main() {
 	glDeleteFramebuffers(1, &HDRFBO);
 	glDeleteTextures(1, &LogAverageBuffer);
 	glDeleteFramebuffers(1, &LogAverageFBO);
+	glDeleteTextures(1, &DirectionalShadowMap);
+	glDeleteFramebuffers(1, &DirectionalShadowMapFBO);
+	glDeleteTextures(1, &PointLightShadowMap);
+	glDeleteFramebuffers(1, &PointLightShadowMapFBO);
+	glDeleteTextures(1, &SpotLightShadowMap);
+	glDeleteFramebuffers(1, &SpotLightShadowMapFBO);
 }
