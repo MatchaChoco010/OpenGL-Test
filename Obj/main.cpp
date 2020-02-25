@@ -74,7 +74,7 @@ GLuint createProgram(std::string vertexShaderFile, std::string fragmentShaderFil
 	glCompileShader(fragmentShaderObj);
 	glAttachShader(program, fragmentShaderObj);
 
-	// 頂点シェーダのチェック
+	// フラグメントシェーダのチェック
 	glGetShaderiv(fragmentShaderObj, GL_COMPILE_STATUS, &status);
 	if (status == GL_FALSE)
 		std::cerr << "Compile Error in Fragment Shader." << std::endl;

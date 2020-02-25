@@ -95,10 +95,10 @@ int main() {
 	glCompileShader(fragmentShaderObj);
 	glAttachShader(program, fragmentShaderObj);
 
-	// 頂点シェーダのチェック
+	// フラグメントシェーダのチェック
 	glGetShaderiv(fragmentShaderObj, GL_COMPILE_STATUS, &status);
 	if (status == GL_FALSE)
-		std::cerr << "Compile Error in Vertex Shader." << std::endl;
+		std::cerr << "Compile Error in Fragment Shader." << std::endl;
 	glGetShaderiv(fragmentShaderObj, GL_INFO_LOG_LENGTH, &infoLogLength);
 	if (infoLogLength > 1) {
 		std::vector<GLchar> fragmentShaderErrorMessage(infoLogLength);
