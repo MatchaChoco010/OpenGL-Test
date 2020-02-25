@@ -567,6 +567,9 @@ int main() {
 	const GLuint pointLightPassProjectionParamsLoc = glGetUniformLocation(pointLightPassShaderProgram, "ProjectionParams");
 	const GLuint pointLightPassResolutionLoc = glGetUniformLocation(pointLightPassShaderProgram, "resolution");
 
+	const GLuint spotLightShadowMapPassShaderProgram = createProgram("SpotLightShadowMapPass.vert", "SpotLightShadowMapPass.frag");
+	const GLuint spotLightShadowMapPassModelViewProjectionLoc = glGetUniformLocation(spotLightShadowMapPassShaderProgram, "ModelViewProjection");
+
 	const GLuint spotLightPassShaderProgram = createProgram("SpotLightPass.vert", "SpotLightPass.frag");
 	const GLuint spotLightPassModelViewProjectionLoc = glGetUniformLocation(spotLightPassShaderProgram, "ModelViewProjection");
 	const GLuint spotLightPassGBuffer0Loc = glGetUniformLocation(spotLightPassShaderProgram, "GBuffer0");
@@ -584,6 +587,8 @@ int main() {
 	const GLuint spotLightPassViewProjectionILoc = glGetUniformLocation(spotLightPassShaderProgram, "ViewProjectionI");
 	const GLuint spotLightPassProjectionParamsLoc = glGetUniformLocation(spotLightPassShaderProgram, "ProjectionParams");
 	const GLuint spotLightPassResolutionLoc = glGetUniformLocation(spotLightPassShaderProgram, "resolution");
+	const GLuint spotLightPassShadowMapLoc = glGetUniformLocation(spotLightPassShaderProgram, "ShadowMap");
+	const GLuint spotLightPassLightViewProjectionLoc = glGetUniformLocation(spotLightPassShaderProgram, "LightViewProjection");
 
 	const GLuint logAverageShaderProgram = createProgram("LogAveragePass.vert", "LogAveragePass.frag");
 	const GLuint logAveragePassInputTextureLoc = glGetUniformLocation(logAverageShaderProgram, "inputTexture");
@@ -708,6 +713,24 @@ int main() {
 	glGenFramebuffers(1, &DirectionalShadowMapFBO);
 	glBindFramebuffer(GL_FRAMEBUFFER, DirectionalShadowMapFBO);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, DirectionalShadowMap, 0);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	// SpotLight Shadow Map
+	const GLuint spotLightShadowMapSize = 512;
+	GLuint SpotLightShadowMap;
+	glGenTextures(1, &SpotLightShadowMap);
+	glBindTexture(GL_TEXTURE_2D, SpotLightShadowMap);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, spotLightShadowMapSize, spotLightShadowMapSize, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	GLuint SpotLightShadowMapFBO;
+	glGenFramebuffers(1, &SpotLightShadowMapFBO);
+	glBindFramebuffer(GL_FRAMEBUFFER, SpotLightShadowMapFBO);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, SpotLightShadowMap, 0);
 	if (GLenum Status = glCheckFramebufferStatus(GL_FRAMEBUFFER); Status != GL_FRAMEBUFFER_COMPLETE) {
 		std::cerr << "Framebuffer Error: " << Status << std::endl;
 		return false;
@@ -742,7 +765,8 @@ int main() {
 
 		auto DirectionalLightDirection = glm::vec3(-0.5, -1, -0.5);
 		//auto DirectionalLightIntensity = 100000.0f;
-		auto DirectionalLightIntensity = 700.0f;
+		//auto DirectionalLightIntensity = 700.0f;
+		auto DirectionalLightIntensity = 30.0f;
 		auto DirectionalLightColor = glm::vec3(1.0, 1.0, 1.0);
 
 
@@ -866,7 +890,7 @@ int main() {
 
 		auto DirectionalLightPosition = glm::vec3(0, 0, 0);
 		auto DirectionalLightView = glm::lookAt(DirectionalLightPosition, DirectionalLightPosition + DirectionalLightDirection, glm::vec3(0, 1, 0));
-		auto DirectionalLightProjection = glm::ortho(-100.0f, 100.0f, -100.0f, 100.0f, -10.0f, 100.0f);
+		auto DirectionalLightProjection = glm::ortho(-20.0f, 20.0f, -20.0f, 20.0f, -10.0f, 20.0f);
 		auto DirectionalLightViewProjection = DirectionalLightProjection * DirectionalLightView;
 
 		auto DirectionalLightModelViewProjection = DirectionalLightViewProjection * Model;
@@ -1020,27 +1044,64 @@ int main() {
 
 
 		// Spot Light Pass
-		glUseProgram(spotLightPassShaderProgram);
-
-		glUniform3fv(spotLightPassWorldCameraPosLoc, 1, &cameraPos[0]);
-		glUniformMatrix4fv(spotLightPassViewProjectionILoc, 1, GL_FALSE, &ViewProjectionI[0][0]);
-		glUniform2fv(spotLightPassProjectionParamsLoc, 1, &ProjectionParams[0]);
-		glUniform2fv(spotLightPassResolutionLoc, 1, &resolution[0]);
-
 		{
-			/*auto spotLightPosition = glm::vec3(4.0f, 8.0f, 4.0f);
-			auto spotLightIntensity = 6000.0f;
+			auto spotLightPosition = glm::vec3(4.0f, 8.0f, 4.0f);
+			auto spotLightIntensity = 16000.0f;
 			auto spotLightColor = glm::vec3(1.0, 0.5, 0.5);
-			auto spotLightRange = 20.0f;
+			auto spotLightRange = 30.0f;
 			auto spotLightDirection = glm::vec3(-1.0, -1.0, -1.0);
 			auto spotLightAngle = glm::radians(45.0f);
 			auto spotLightBlend = 0.15f;
 
+
+			// Spot Light Shadow Pass
+			glUseProgram(spotLightShadowMapPassShaderProgram);
+			glBindFramebuffer(GL_DRAW_FRAMEBUFFER, SpotLightShadowMapFBO);
+
+			auto LightOffsetFactor = 8.0f;
+			auto LightOffsetUnits = 1.0f;
+
+			glPolygonOffset(LightOffsetFactor, LightOffsetUnits);
+			glEnable(GL_POLYGON_OFFSET_FILL);
+
+			glStencilFunc(GL_ALWAYS, 0, 0);
+			glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+
+			glDepthMask(GL_TRUE);
+			glEnable(GL_DEPTH_TEST);
+
+			glClear(GL_DEPTH_BUFFER_BIT);
+
+			glViewport(0, 0, spotLightShadowMapSize, spotLightShadowMapSize);
+
+			auto LightView = glm::lookAt(spotLightPosition, spotLightPosition + spotLightDirection, glm::vec3(0, 1, 0));
+			auto LightProjection = glm::perspective(spotLightAngle, 1.0f, 0.1f, spotLightRange);
+			auto LightViewProjection = LightProjection * LightView;
+
+			auto LightModelViewProjection = LightViewProjection * Model;
+			glUniformMatrix4fv(spotLightShadowMapPassModelViewProjectionLoc, 1, GL_FALSE, &LightModelViewProjection[0][0]);
+			glBindVertexArray(vao);
+			glDrawArrays(GL_TRIANGLES, 0, vertices.size());
+
+			auto LightModel1ViewProjection = LightViewProjection * Model1;
+			glUniformMatrix4fv(spotLightShadowMapPassModelViewProjectionLoc, 1, GL_FALSE, &LightModel1ViewProjection[0][0]);
+			glDrawArrays(GL_TRIANGLES, 0, vertices.size());
+
+			auto LightModelFloorViewProjection = LightViewProjection * ModelFloor;
+			glUniformMatrix4fv(spotLightShadowMapPassModelViewProjectionLoc, 1, GL_FALSE, &LightModelFloorViewProjection[0][0]);
+			glBindVertexArray(floorVao);
+			glDrawArrays(GL_TRIANGLES, 0, floorVertices.size());
+
+			glDisable(GL_POLYGON_OFFSET_FILL);
+
+
+			// Punctual Light Stencil Pass
 			auto SpotLightModel = glm::translate(glm::mat4(1.0), spotLightPosition);
 			SpotLightModel = glm::scale(SpotLightModel, glm::vec3(spotLightRange + 0.1));
 			auto SpotLightModelViewProjection = Projection * View * SpotLightModel;
 
 			glUseProgram(punctualLightStencilPassShaderProgram);
+			glBindFramebuffer(GL_FRAMEBUFFER, HDRFBO);
 
 			glUniformMatrix4fv(punctualLightStencilPassModelViewProjectionLoc, 1, GL_FALSE, &SpotLightModelViewProjection[0][0]);
 
@@ -1058,9 +1119,13 @@ int main() {
 			glDrawBuffer(GL_NONE);
 			glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
 
+			glViewport(0, 0, width, height);
+
 			glBindVertexArray(sphereVAO);
 			glDrawElements(GL_TRIANGLES, sphereIndices.size(), GL_UNSIGNED_INT, 0);
 
+
+			// Spot Light Lighting Pass
 			glUseProgram(spotLightPassShaderProgram);
 
 			glUniform3fv(spotLightPassWorldCameraPosLoc, 1, &cameraPos[0]);
@@ -1078,10 +1143,26 @@ int main() {
 
 			glUniformMatrix4fv(spotLightPassModelViewProjectionLoc, 1, GL_FALSE, &SpotLightModelViewProjection[0][0]);
 
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, GBuffer0ColorBuffer);
+			glActiveTexture(GL_TEXTURE1);
+			glBindTexture(GL_TEXTURE_2D, GBuffer1ColorBuffer);
+			glActiveTexture(GL_TEXTURE2);
+			glBindTexture(GL_TEXTURE_2D, GBuffer2ColorBuffer);
+			glActiveTexture(GL_TEXTURE3);
+			glBindTexture(GL_TEXTURE_2D, GBuffer3ColorBuffer);
+
 			glUniform1i(spotLightPassGBuffer0Loc, 0);
 			glUniform1i(spotLightPassGBuffer1Loc, 1);
 			glUniform1i(spotLightPassGBuffer2Loc, 2);
 			glUniform1i(spotLightPassGBuffer3Loc, 3);
+
+			glActiveTexture(GL_TEXTURE4);
+			glBindTexture(GL_TEXTURE_2D, SpotLightShadowMap);
+
+			glUniform1i(spotLightPassShadowMapLoc, 4);
+
+			glUniformMatrix4fv(spotLightPassLightViewProjectionLoc, 1, GL_FALSE, &LightViewProjection[0][0]);
 
 			glDisable(GL_DEPTH_TEST);
 
@@ -1098,7 +1179,7 @@ int main() {
 			glBindVertexArray(sphereVAO);
 			glDrawElements(GL_TRIANGLES, sphereIndices.size(), GL_UNSIGNED_INT, 0);
 
-			glCullFace(GL_BACK);*/
+			glCullFace(GL_BACK);
 		}
 
 
@@ -1128,7 +1209,7 @@ int main() {
 		Lavg = Lavg + (Lnew - Lavg) * (1 - std::expf(-1 * deltaTime * 1.0));
 
 		const auto targetEV = ComputeTargetEV(Lavg);
-		const auto EVcomp = -5.0f;
+		const auto EVcomp = -2.0f;
 
 		float aperture, shutterSpeed, iso;
 		ApplyProgramAuto(50, targetEV - EVcomp, aperture, shutterSpeed, iso);
